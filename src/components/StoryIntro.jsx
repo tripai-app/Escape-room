@@ -2,22 +2,34 @@ import { useState, useEffect } from "react";
 import CharacterDialogue from "./CharacterDialogue";
 import { STORY_SCENES, BACKGROUND_STORY, CHARACTERS } from "../data/characters";
 
+const CHAR_BIOS = {
+  signal: "Identität unbekannt. Hat die Tür ins NOVA-Netzwerk geöffnet. Kommuniziert nur über verschlüsselte Nachrichten.",
+  herald: "Die KI hinter NOVASTREAM. Erscheint als holografisches Bild. Spricht in Werbetexten. Hat keine Gefühle — aber einen Plan.",
+  void: "Hat HERALD erschaffen. Bereut es. Trägt noch immer ihren alten NOVA-Laborkittel — mit dem Logo überklebt.",
+};
+
 export default function StoryIntro({ onDone }) {
   const [phase, setPhase] = useState("title");
-  // title → background → characters → dialogue → countdown
   const [bgLineIdx, setBgLineIdx] = useState(0);
+  const [allLinesShown, setAllLinesShown] = useState(false);
   const [count, setCount] = useState(3);
 
-  // Background story: eine Zeile alle 1.8s
+  // Zeigt eine Zeile alle 2.5 Sekunden — stoppt wenn alle da sind
   useEffect(() => {
     if (phase !== "background") return;
     if (bgLineIdx >= BACKGROUND_STORY.length) {
-      setTimeout(() => setPhase("characters"), 1200);
+      setAllLinesShown(true);
       return;
     }
-    const t = setTimeout(() => setBgLineIdx(i => i + 1), 1800);
+    const t = setTimeout(() => setBgLineIdx(i => i + 1), 2500);
     return () => clearTimeout(t);
   }, [phase, bgLineIdx]);
+
+  // Wenn auf Background geklickt wird → alle Zeilen sofort zeigen
+  function skipToEnd() {
+    setBgLineIdx(BACKGROUND_STORY.length);
+    setAllLinesShown(true);
+  }
 
   function handleDialogueDone() {
     setPhase("countdown");
@@ -39,6 +51,7 @@ export default function StoryIntro({ onDone }) {
       padding: "1.5rem",
       overflowY: "auto",
     }}>
+      {/* Hintergrund-Glow */}
       <div style={{
         position: "fixed", inset: 0, zIndex: 0,
         backgroundImage:
@@ -49,7 +62,7 @@ export default function StoryIntro({ onDone }) {
 
       <div style={{ maxWidth: 540, width: "100%", position: "relative", zIndex: 1 }}>
 
-        {/* ── PHASE: Title ── */}
+        {/* ── PHASE: Titel ── */}
         {phase === "title" && (
           <div style={{ textAlign: "center" }} className="fade-up">
             <span className="badge badge-red" style={{ marginBottom: "1rem", display: "inline-block" }}>
@@ -58,75 +71,117 @@ export default function StoryIntro({ onDone }) {
             <h1 className="glitch" style={{
               color: "var(--red)", fontSize: "clamp(3rem,12vw,5.5rem)",
               lineHeight: 0.9, marginBottom: "0.2rem",
-            }}>NOVA</h1>
+            }}>
+              NOVA
+            </h1>
             <div style={{
               color: "var(--cyan)", fontFamily: "Share Tech Mono, monospace",
               letterSpacing: "0.5em", fontSize: "0.85rem", marginBottom: "0.3rem",
-            }}>P R O T O C O L</div>
+            }}>
+              P R O T O C O L
+            </div>
             <div style={{
               color: "var(--text-dim)", fontFamily: "Share Tech Mono, monospace",
               fontSize: "0.65rem", letterSpacing: "0.2em", marginBottom: "2.5rem",
-            }}>─── DIE LETZTE SENDUNG · 2031 ───</div>
-
-            <button className="btn btn-primary"
-              onClick={() => setPhase("background")}
-              style={{ maxWidth: 280, margin: "0 auto" }}>
+            }}>
+              ─── DIE LETZTE SENDUNG · 2031 ───
+            </div>
+            <button
+              className="btn btn-primary"
+              onClick={() => { setPhase("background"); setBgLineIdx(0); setAllLinesShown(false); }}
+              style={{ maxWidth: 280, margin: "0 auto" }}
+            >
               ▶ Nachricht öffnen
             </button>
           </div>
         )}
 
-        {/* ── PHASE: Background Story ── */}
+        {/* ── PHASE: Hintergrundgeschichte ── */}
         {phase === "background" && (
           <div className="fade-up">
-            <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+            <div style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              marginBottom: "1.25rem",
+            }}>
               <span className="badge badge-red">GEHEIMAKTE — NOVA CORP</span>
+              {!allLinesShown && (
+                <button
+                  onClick={skipToEnd}
+                  style={{
+                    background: "transparent", border: "none", color: "var(--text-dim)",
+                    fontSize: "0.72rem", fontFamily: "Share Tech Mono, monospace",
+                    cursor: "pointer", letterSpacing: "0.08em",
+                  }}
+                >
+                  Überspringen ›
+                </button>
+              )}
             </div>
+
+            {/* Textfeld */}
             <div style={{
               background: "rgba(255,34,85,0.04)",
-              border: "1px solid rgba(255,34,85,0.15)",
+              border: "1px solid rgba(255,34,85,0.18)",
               borderRadius: 8, padding: "1.5rem",
-              minHeight: 280,
+              marginBottom: "1.25rem",
+              minHeight: 260,
             }}>
               {BACKGROUND_STORY.slice(0, bgLineIdx).map((line, i) => (
-                <p key={i} className="fade-up" style={{
-                  color: i === 0 ? "var(--yellow)" : i >= 7 ? "var(--cyan)" : "var(--text)",
-                  fontSize: i === 0 ? "1.1rem" : "0.95rem",
+                <p key={i} style={{
+                  color: i === 0 ? "var(--yellow)"
+                    : i >= BACKGROUND_STORY.length - 2 ? "var(--cyan)"
+                    : "var(--text)",
+                  fontSize: i === 0 ? "1.05rem" : "0.95rem",
                   fontWeight: i === 0 ? 700 : 600,
-                  lineHeight: 1.75,
-                  marginBottom: "0.4rem",
+                  lineHeight: 1.8,
+                  marginBottom: "0.35rem",
                   fontFamily: "Rajdhani, sans-serif",
-                  animationDelay: `${i * 0.03}s`,
-                }}>{line}</p>
+                  animation: "fadeUp 0.5s ease both",
+                }}>
+                  {line}
+                </p>
               ))}
-              {bgLineIdx < BACKGROUND_STORY.length && (
+              {!allLinesShown && (
                 <span className="blink" style={{ color: "var(--text-dim)" }}>▌</span>
               )}
             </div>
+
+            {/* Weiter-Button — erscheint erst wenn alles gelesen */}
+            {allLinesShown && (
+              <button
+                className="btn btn-primary"
+                onClick={() => setPhase("characters")}
+                style={{ animation: "fadeUp 0.4s ease both" }}
+              >
+                ▶ Weiter — Beteiligte Personen
+              </button>
+            )}
           </div>
         )}
 
-        {/* ── PHASE: Characters ── */}
+        {/* ── PHASE: Charaktere ── */}
         {phase === "characters" && (
-          <div className="fade-up">
+          <div className="fade-up" style={{ paddingTop: "0.5rem" }}>
             <div style={{ textAlign: "center", marginBottom: "1.25rem" }}>
               <span className="badge badge-yellow">BETEILIGTE PERSONEN</span>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", marginBottom: "1.5rem" }}>
               {Object.values(CHARACTERS).map((char, i) => (
-                <CharacterCard key={char.id} char={char} delay={i * 0.15} />
+                <CharacterCard key={char.id} char={char} delay={i * 0.18} />
               ))}
             </div>
+
             <button className="btn btn-primary" onClick={() => setPhase("dialogue")}>
               ▶ Kontakt herstellen
             </button>
           </div>
         )}
 
-        {/* ── PHASE: Dialogue ── */}
+        {/* ── PHASE: Dialog ── */}
         {phase === "dialogue" && (
-          <div>
-            <div style={{ textAlign: "center", marginBottom: "1.25rem", paddingTop: "0.5rem" }}>
+          <div style={{ paddingTop: "0.5rem" }}>
+            <div style={{ textAlign: "center", marginBottom: "1.25rem" }}>
               <span className="badge badge-red">LIVE-ÜBERTRAGUNG</span>
             </div>
             <CharacterDialogue scenes={STORY_SCENES} onDone={handleDialogueDone} />
@@ -140,7 +195,9 @@ export default function StoryIntro({ onDone }) {
               fontFamily: "Orbitron, monospace", fontSize: "7rem", fontWeight: 900,
               color: "var(--red)", textShadow: "var(--glow-red)", lineHeight: 1,
               marginBottom: "1rem", animation: "glitch 0.4s infinite",
-            }}>{count}</div>
+            }}>
+              {count}
+            </div>
             <p style={{ color: "var(--cyan)", fontFamily: "Share Tech Mono, monospace", letterSpacing: "0.2em" }}>
               MISSION STARTET
             </p>
@@ -151,70 +208,95 @@ export default function StoryIntro({ onDone }) {
   );
 }
 
-// Charakter-Karte wie ein Personalausweis / Akte
+// ── Charakter-Karte ─────────────────────────────────────────────────────────
 function CharacterCard({ char, delay }) {
+  const bio = CHAR_BIOS[char.id] || "";
+  const emoji = char.id === "void" ? "👩‍💻" : char.id === "signal" ? "🥷" : "🤖";
+  const badge = char.id === "void" ? "GESUCHTE PERSON"
+    : char.id === "signal" ? "IDENTITÄT UNBEKANNT"
+    : "KÜNSTLICHE INTELLIGENZ";
+
   return (
-    <div className="fade-up" style={{
-      display: "flex", gap: "1rem", alignItems: "stretch",
+    <div style={{
+      display: "flex", gap: "0.9rem", alignItems: "flex-start",
       background: char.bg,
-      border: `1px solid ${char.color}35`,
-      borderRadius: 10, padding: "0.9rem",
+      border: `1px solid ${char.color}40`,
+      borderRadius: 10,
+      padding: "0.9rem",
+      animation: "fadeUp 0.45s ease both",
       animationDelay: `${delay}s`,
+      opacity: 0,
     }}>
-      {/* Portrait */}
+      {/* Portrait-Box */}
       <div style={{
-        width: 64, height: 72, flexShrink: 0,
+        width: 62, height: 70,
+        flexShrink: 0,
         border: `2px solid ${char.color}`,
         borderRadius: 8,
-        background: `${char.color}12`,
-        boxShadow: `0 0 18px ${char.color}35`,
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        gap: "0.1rem",
-        position: "relative", overflow: "hidden",
+        background: `${char.color}10`,
+        boxShadow: `0 0 16px ${char.color}30`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "2.2rem",
+        position: "relative",
+        overflow: "hidden",
       }}>
-        <span style={{ fontSize: "2rem", lineHeight: 1 }}>{char.portrait.detail}</span>
-        {/* Scan-Linien über dem Portrait */}
+        {emoji}
+        {/* Scan-Linien */}
         <div style={{
           position: "absolute", inset: 0,
-          backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 3px, ${char.color}08 3px, ${char.color}08 4px)`,
+          background: `repeating-linear-gradient(0deg, transparent, transparent 4px, ${char.color}10 4px, ${char.color}10 5px)`,
+          pointerEvents: "none",
         }} />
       </div>
 
-      {/* Info */}
+      {/* Info-Block */}
       <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Name + Badge */}
         <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-          marginBottom: "0.25rem",
+          display: "flex", justifyContent: "space-between",
+          alignItems: "center", gap: "0.4rem",
+          marginBottom: "0.2rem", flexWrap: "wrap",
         }}>
-          <div style={{
-            fontFamily: "Orbitron, monospace", fontWeight: 700,
-            color: char.color, fontSize: "0.9rem",
-          }}>{char.name}</div>
           <span style={{
-            fontSize: "0.55rem", padding: "0.15rem 0.4rem",
-            background: `${char.color}20`, border: `1px solid ${char.color}40`,
+            fontFamily: "Orbitron, monospace", fontWeight: 700,
+            color: char.color, fontSize: "0.85rem",
+          }}>
+            {char.name}
+          </span>
+          <span style={{
+            fontSize: "0.55rem", padding: "0.1rem 0.35rem",
+            background: `${char.color}18`,
+            border: `1px solid ${char.color}35`,
             borderRadius: 2, color: char.color,
-            fontFamily: "Share Tech Mono, monospace", letterSpacing: "0.06em",
-            whiteSpace: "nowrap",
-          }}>{char.portrait.badge}</span>
+            fontFamily: "Share Tech Mono, monospace",
+            letterSpacing: "0.05em", whiteSpace: "nowrap",
+          }}>
+            {badge}
+          </span>
         </div>
+
+        {/* Titel */}
         <div style={{
-          color: "var(--text-dim)", fontSize: "0.72rem",
+          color: "var(--text-dim)", fontSize: "0.68rem",
           fontFamily: "Share Tech Mono, monospace",
-          marginBottom: "0.4rem", letterSpacing: "0.04em",
-        }}>{char.title}</div>
-        <div style={{ width: "100%", height: 1, background: `${char.color}20`, marginBottom: "0.4rem" }} />
-        <p style={{ color: "var(--text)", fontSize: "0.85rem", lineHeight: 1.5, fontWeight: 600 }}>
-          {CHAR_BIOS[char.id]}
+          letterSpacing: "0.05em", marginBottom: "0.4rem",
+        }}>
+          {char.title}
+        </div>
+
+        {/* Trennlinie */}
+        <div style={{ height: 1, background: `${char.color}20`, marginBottom: "0.4rem" }} />
+
+        {/* Bio */}
+        <p style={{
+          color: "var(--text)", fontSize: "0.88rem",
+          lineHeight: 1.55, fontWeight: 600,
+        }}>
+          {bio}
         </p>
       </div>
     </div>
   );
 }
-
-const CHAR_BIOS = {
-  signal: "Identität unbekannt. Hat die Tür ins NOVA-Netzwerk geöffnet. Kommuniziert nur über verschlüsselte Nachrichten.",
-  herald: "Die KI hinter NOVASTREAM. Erscheint als holografisches Bild. Spricht in Werbetexten. Hat keine Gefühle — aber einen Plan.",
-  void: "Hat HERALD erschaffen. Bereut es. Trägt noch immer ihren alten NOVA-Laborkittel — aber mit dem Logo überklebt.",
-};
