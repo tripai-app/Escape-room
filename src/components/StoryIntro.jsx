@@ -1,25 +1,31 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CharacterDialogue from "./CharacterDialogue";
-import { STORY_SCENES } from "../data/characters";
+import { STORY_SCENES, BACKGROUND_STORY, CHARACTERS } from "../data/characters";
 
 export default function StoryIntro({ onDone }) {
-  const [phase, setPhase] = useState("title"); // "title" | "dialogue" | "countdown"
+  const [phase, setPhase] = useState("title");
+  // title → background → characters → dialogue → countdown
+  const [bgLineIdx, setBgLineIdx] = useState(0);
   const [count, setCount] = useState(3);
 
-  function startDialogue() {
-    setPhase("dialogue");
-  }
+  // Background story: eine Zeile alle 1.8s
+  useEffect(() => {
+    if (phase !== "background") return;
+    if (bgLineIdx >= BACKGROUND_STORY.length) {
+      setTimeout(() => setPhase("characters"), 1200);
+      return;
+    }
+    const t = setTimeout(() => setBgLineIdx(i => i + 1), 1800);
+    return () => clearTimeout(t);
+  }, [phase, bgLineIdx]);
 
   function handleDialogueDone() {
     setPhase("countdown");
     let c = 3;
-    const t = setInterval(() => {
+    const iv = setInterval(() => {
       c--;
       setCount(c);
-      if (c <= 0) {
-        clearInterval(t);
-        onDone();
-      }
+      if (c <= 0) { clearInterval(iv); onDone(); }
     }, 900);
   }
 
@@ -27,105 +33,100 @@ export default function StoryIntro({ onDone }) {
     <div style={{
       position: "fixed", inset: 0, zIndex: 100,
       background: "var(--bg)",
-      display: "flex",
-      flexDirection: "column",
+      display: "flex", flexDirection: "column",
       alignItems: "center",
-      justifyContent: phase === "dialogue" ? "flex-start" : "center",
+      justifyContent: ["dialogue", "characters"].includes(phase) ? "flex-start" : "center",
       padding: "1.5rem",
       overflowY: "auto",
     }}>
-      {/* Animated background */}
       <div style={{
         position: "fixed", inset: 0, zIndex: 0,
-        backgroundImage: "radial-gradient(ellipse at 30% 50%, rgba(255,34,85,0.07) 0%, transparent 60%), radial-gradient(ellipse at 70% 50%, rgba(0,229,255,0.05) 0%, transparent 60%)",
+        backgroundImage:
+          "radial-gradient(ellipse at 30% 50%, rgba(255,34,85,0.07) 0%, transparent 60%), " +
+          "radial-gradient(ellipse at 70% 50%, rgba(0,229,255,0.05) 0%, transparent 60%)",
         pointerEvents: "none",
       }} />
 
-      <div style={{ maxWidth: 560, width: "100%", position: "relative", zIndex: 1 }}>
+      <div style={{ maxWidth: 540, width: "100%", position: "relative", zIndex: 1 }}>
 
         {/* ── PHASE: Title ── */}
         {phase === "title" && (
           <div style={{ textAlign: "center" }} className="fade-up">
-            <div style={{ marginBottom: "0.5rem" }}>
-              <span className="badge badge-red">EINGEHENDE NACHRICHT</span>
-            </div>
-
+            <span className="badge badge-red" style={{ marginBottom: "1rem", display: "inline-block" }}>
+              EINGEHENDE NACHRICHT
+            </span>
             <h1 className="glitch" style={{
-              color: "var(--red)",
-              fontSize: "clamp(2.5rem, 10vw, 5rem)",
-              marginBottom: "0.1rem",
-              lineHeight: 1,
-            }}>
-              NOVA
-            </h1>
+              color: "var(--red)", fontSize: "clamp(3rem,12vw,5.5rem)",
+              lineHeight: 0.9, marginBottom: "0.2rem",
+            }}>NOVA</h1>
             <div style={{
-              color: "var(--cyan)",
-              fontFamily: "Share Tech Mono, monospace",
-              letterSpacing: "0.5em",
-              fontSize: "0.85rem",
-              marginBottom: "0.25rem",
-            }}>
-              P R O T O C O L
-            </div>
+              color: "var(--cyan)", fontFamily: "Share Tech Mono, monospace",
+              letterSpacing: "0.5em", fontSize: "0.85rem", marginBottom: "0.3rem",
+            }}>P R O T O C O L</div>
             <div style={{
-              color: "var(--text-dim)",
-              fontFamily: "Share Tech Mono, monospace",
-              fontSize: "0.7rem",
-              letterSpacing: "0.2em",
-              marginBottom: "2.5rem",
-            }}>
-              — DIE LETZTE SENDUNG — 2031 —
-            </div>
+              color: "var(--text-dim)", fontFamily: "Share Tech Mono, monospace",
+              fontSize: "0.65rem", letterSpacing: "0.2em", marginBottom: "2.5rem",
+            }}>─── DIE LETZTE SENDUNG · 2031 ───</div>
 
-            {/* Three character teasers */}
-            <div style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "1.5rem",
-              marginBottom: "2.5rem",
-            }}>
-              {[
-                { icon: "◈", name: "SIGNAL", color: "#ffd600", label: "Unbekannt" },
-                { icon: "▲", name: "HERALD", color: "#ff2255", label: "Die KI" },
-                { icon: "◉", name: "Dr. VOID", color: "#00e5ff", label: "Verbündete" },
-              ].map(c => (
-                <div key={c.name} style={{ textAlign: "center" }}>
-                  <div style={{
-                    width: 56, height: 56,
-                    borderRadius: 8,
-                    border: `2px solid ${c.color}`,
-                    background: `${c.color}15`,
-                    boxShadow: `0 0 20px ${c.color}40`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "1.8rem",
-                    color: c.color,
-                    margin: "0 auto 0.4rem",
-                  }}>
-                    {c.icon}
-                  </div>
-                  <div style={{ fontSize: "0.65rem", color: c.color, fontFamily: "Share Tech Mono, monospace", letterSpacing: "0.08em" }}>
-                    {c.name}
-                  </div>
-                  <div style={{ fontSize: "0.6rem", color: "var(--text-dim)" }}>{c.label}</div>
-                </div>
-              ))}
-            </div>
-
-            <button className="btn btn-primary" onClick={startDialogue} style={{ maxWidth: 300, margin: "0 auto" }}>
+            <button className="btn btn-primary"
+              onClick={() => setPhase("background")}
+              style={{ maxWidth: 280, margin: "0 auto" }}>
               ▶ Nachricht öffnen
             </button>
-            <p style={{ color: "var(--text-dim)", fontSize: "0.7rem", marginTop: "0.75rem", fontFamily: "Share Tech Mono, monospace" }}>
-              Tippen zum Überspringen
-            </p>
+          </div>
+        )}
+
+        {/* ── PHASE: Background Story ── */}
+        {phase === "background" && (
+          <div className="fade-up">
+            <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+              <span className="badge badge-red">GEHEIMAKTE — NOVA CORP</span>
+            </div>
+            <div style={{
+              background: "rgba(255,34,85,0.04)",
+              border: "1px solid rgba(255,34,85,0.15)",
+              borderRadius: 8, padding: "1.5rem",
+              minHeight: 280,
+            }}>
+              {BACKGROUND_STORY.slice(0, bgLineIdx).map((line, i) => (
+                <p key={i} className="fade-up" style={{
+                  color: i === 0 ? "var(--yellow)" : i >= 7 ? "var(--cyan)" : "var(--text)",
+                  fontSize: i === 0 ? "1.1rem" : "0.95rem",
+                  fontWeight: i === 0 ? 700 : 600,
+                  lineHeight: 1.75,
+                  marginBottom: "0.4rem",
+                  fontFamily: "Rajdhani, sans-serif",
+                  animationDelay: `${i * 0.03}s`,
+                }}>{line}</p>
+              ))}
+              {bgLineIdx < BACKGROUND_STORY.length && (
+                <span className="blink" style={{ color: "var(--text-dim)" }}>▌</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── PHASE: Characters ── */}
+        {phase === "characters" && (
+          <div className="fade-up">
+            <div style={{ textAlign: "center", marginBottom: "1.25rem" }}>
+              <span className="badge badge-yellow">BETEILIGTE PERSONEN</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
+              {Object.values(CHARACTERS).map((char, i) => (
+                <CharacterCard key={char.id} char={char} delay={i * 0.15} />
+              ))}
+            </div>
+            <button className="btn btn-primary" onClick={() => setPhase("dialogue")}>
+              ▶ Kontakt herstellen
+            </button>
           </div>
         )}
 
         {/* ── PHASE: Dialogue ── */}
         {phase === "dialogue" && (
-          <div style={{ paddingTop: "1rem" }}>
-            <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+          <div>
+            <div style={{ textAlign: "center", marginBottom: "1.25rem", paddingTop: "0.5rem" }}>
               <span className="badge badge-red">LIVE-ÜBERTRAGUNG</span>
             </div>
             <CharacterDialogue scenes={STORY_SCENES} onDone={handleDialogueDone} />
@@ -136,17 +137,10 @@ export default function StoryIntro({ onDone }) {
         {phase === "countdown" && (
           <div style={{ textAlign: "center" }} className="fade-up">
             <div style={{
-              fontFamily: "Orbitron, monospace",
-              fontSize: "6rem",
-              fontWeight: 900,
-              color: "var(--red)",
-              textShadow: "var(--glow-red)",
-              lineHeight: 1,
-              marginBottom: "1rem",
-              animation: "glitch 0.5s infinite",
-            }}>
-              {count}
-            </div>
+              fontFamily: "Orbitron, monospace", fontSize: "7rem", fontWeight: 900,
+              color: "var(--red)", textShadow: "var(--glow-red)", lineHeight: 1,
+              marginBottom: "1rem", animation: "glitch 0.4s infinite",
+            }}>{count}</div>
             <p style={{ color: "var(--cyan)", fontFamily: "Share Tech Mono, monospace", letterSpacing: "0.2em" }}>
               MISSION STARTET
             </p>
@@ -156,3 +150,71 @@ export default function StoryIntro({ onDone }) {
     </div>
   );
 }
+
+// Charakter-Karte wie ein Personalausweis / Akte
+function CharacterCard({ char, delay }) {
+  return (
+    <div className="fade-up" style={{
+      display: "flex", gap: "1rem", alignItems: "stretch",
+      background: char.bg,
+      border: `1px solid ${char.color}35`,
+      borderRadius: 10, padding: "0.9rem",
+      animationDelay: `${delay}s`,
+    }}>
+      {/* Portrait */}
+      <div style={{
+        width: 64, height: 72, flexShrink: 0,
+        border: `2px solid ${char.color}`,
+        borderRadius: 8,
+        background: `${char.color}12`,
+        boxShadow: `0 0 18px ${char.color}35`,
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        gap: "0.1rem",
+        position: "relative", overflow: "hidden",
+      }}>
+        <span style={{ fontSize: "2rem", lineHeight: 1 }}>{char.portrait.detail}</span>
+        {/* Scan-Linien über dem Portrait */}
+        <div style={{
+          position: "absolute", inset: 0,
+          backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 3px, ${char.color}08 3px, ${char.color}08 4px)`,
+        }} />
+      </div>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+          marginBottom: "0.25rem",
+        }}>
+          <div style={{
+            fontFamily: "Orbitron, monospace", fontWeight: 700,
+            color: char.color, fontSize: "0.9rem",
+          }}>{char.name}</div>
+          <span style={{
+            fontSize: "0.55rem", padding: "0.15rem 0.4rem",
+            background: `${char.color}20`, border: `1px solid ${char.color}40`,
+            borderRadius: 2, color: char.color,
+            fontFamily: "Share Tech Mono, monospace", letterSpacing: "0.06em",
+            whiteSpace: "nowrap",
+          }}>{char.portrait.badge}</span>
+        </div>
+        <div style={{
+          color: "var(--text-dim)", fontSize: "0.72rem",
+          fontFamily: "Share Tech Mono, monospace",
+          marginBottom: "0.4rem", letterSpacing: "0.04em",
+        }}>{char.title}</div>
+        <div style={{ width: "100%", height: 1, background: `${char.color}20`, marginBottom: "0.4rem" }} />
+        <p style={{ color: "var(--text)", fontSize: "0.85rem", lineHeight: 1.5, fontWeight: 600 }}>
+          {CHAR_BIOS[char.id]}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+const CHAR_BIOS = {
+  signal: "Identität unbekannt. Hat die Tür ins NOVA-Netzwerk geöffnet. Kommuniziert nur über verschlüsselte Nachrichten.",
+  herald: "Die KI hinter NOVASTREAM. Erscheint als holografisches Bild. Spricht in Werbetexten. Hat keine Gefühle — aber einen Plan.",
+  void: "Hat HERALD erschaffen. Bereut es. Trägt noch immer ihren alten NOVA-Laborkittel — aber mit dem Logo überklebt.",
+};
