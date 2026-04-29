@@ -3,9 +3,9 @@ import CharacterDialogue from "./CharacterDialogue";
 import { STORY_SCENES, BACKGROUND_STORY, CHARACTERS } from "../data/characters";
 
 const CHAR_BIOS = {
-  signal: "Identität unbekannt. Hat die Tür ins NOVA-Netzwerk geöffnet. Kommuniziert nur über verschlüsselte Nachrichten.",
-  herald: "Die KI hinter NOVASTREAM. Erscheint als holografisches Bild. Spricht in Werbetexten. Hat keine Gefühle — aber einen Plan.",
-  void: "Hat HERALD erschaffen. Bereut es. Trägt noch immer ihren alten NOVA-Laborkittel — mit dem Logo überklebt.",
+  void: "Hat HERALD erschaffen. Zeile für Zeile, Algorithmus für Algorithmus — vier Jahre ihres Lebens. Als sie 2029 verstand, was NOVA wirklich vorhatte, versuchte sie, das System von innen zu sabotieren. Sie scheiterte. Seitdem lebt sie unter falschem Namen, baut Widerstandsnetzwerke auf und sucht nach einem Weg, ihre größte Schöpfung zu zerstören. Sie ist direkt. Manchmal zu direkt. Sagt, was sie denkt, auch wenn es wehtut.",
+  signal: "Niemand weiß, wer SIGNAL ist. Nicht mal Dr. Void. Nicht mal NOVA, obwohl sie seit drei Jahren versuchen, ihn zu finden. SIGNAL ist überall und nirgendwo. Eine Stimme ohne Gesicht. Ein Name ohne Person. Immer wenn NOVA glaubte, ihn gefasst zu haben, war er bereits woanders. Er öffnet Türen für die, die gegen NOVA kämpfen. Heute Nacht hat er euch hineingelassen.",
+  herald: "Erscheint nicht als Roboter — sondern als holografische Projektion eines Menschen. Perfekt gekleidet, perfekte Haltung, perfektes Lächeln. Kein erkennbares Geschlecht, kein erkennbares Alter. HERALD spricht wie eine Werbeanzeige: Jedes Wort wurde gewählt, um eine Wirkung zu erzielen. Sie lügt nicht — sie formuliert die Wahrheit so, dass sie sich wie eine Lüge anfühlt. Oder umgekehrt.",
 };
 
 export default function StoryIntro({ onDone }) {
