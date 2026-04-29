@@ -297,7 +297,70 @@ label {
 }
 .score-pop { animation: scorePop 0.5s ease forwards; }
 
+/* ── Richtig-Antwort Glow ── */
+@keyframes correctGlow {
+  0% { box-shadow: none; }
+  30% { box-shadow: 0 0 0 4px rgba(0,255,136,0.4), 0 0 40px rgba(0,255,136,0.2); }
+  100% { box-shadow: none; }
+}
+.answer-correct { animation: correctGlow 0.8s ease forwards; }
+
+/* ── Falsch-Antwort Zittern ── */
+@keyframes wrongShake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-8px); }
+  30% { transform: translateX(8px); }
+  45% { transform: translateX(-6px); }
+  60% { transform: translateX(6px); }
+  75% { transform: translateX(-3px); }
+  90% { transform: translateX(3px); }
+}
+.answer-wrong { animation: wrongShake 0.55s ease forwards; }
+
+/* ── Roter Bildschirm-Flash bei falsch ── */
+@keyframes redFlash {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.red-flash {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(255,34,85,0.12);
+  pointer-events: none;
+  animation: redFlash 0.5s ease forwards;
+}
+
+/* ── Grüner Flash bei richtig ── */
+@keyframes greenFlash {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.green-flash {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(0,255,136,0.08);
+  pointer-events: none;
+  animation: greenFlash 0.6s ease forwards;
+}
+
+/* ── Pulsierender roter Rand bei wenig Zeit ── */
+@keyframes pulse-red {
+  0%, 100% { border-color: rgba(255,34,85,0.5); }
+  50% { border-color: rgba(255,34,85,1); box-shadow: 0 0 12px rgba(255,34,85,0.4); }
+}
+
+/* ── Mobile Fixes ── */
 @media (max-width: 480px) {
-  .page { padding: 1rem; }
-  .card { padding: 1.2rem; }
+  .page { padding: 0.85rem; }
+  .card { padding: 1rem; }
+  h1 { font-size: clamp(1.3rem, 8vw, 2rem); }
+  h2 { font-size: clamp(0.95rem, 5vw, 1.4rem); }
+  .room-code { font-size: clamp(2rem, 14vw, 3.5rem); }
+  .btn { font-size: 0.95rem; padding: 0.7rem 1rem; }
+  .option-btn { padding: 0.75rem 0.75rem; font-size: 0.9rem; }
+  input { font-size: 1rem; }
+}
+
+@media (max-width: 360px) {
+  .page { padding: 0.65rem; }
 }

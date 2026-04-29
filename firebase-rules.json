@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomCode": {
+        ".read": true,
+        ".write": true,
+        ".validate": "newData.hasChildren(['status'])",
+
+        "players": {
+          "$playerId": {
+            ".read": true,
+            ".write": true,
+            ".validate": "newData.hasChildren(['name'])"
+          }
+        },
+
+        "hint": {
+          ".read": true,
+          ".write": true
+        },
+
+        "status": {
+          ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'intro' || newData.val() === 'playing' || newData.val() === 'interlude' || newData.val() === 'finished')"
+        },
+
+        "currentPuzzle": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20"
+        }
+      }
+    }
+  }
+}
