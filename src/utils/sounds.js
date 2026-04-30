@@ -115,3 +115,11 @@ export function toggleMute() {
 }
 
 export function isMuted() { return muted; }
+
+export function playAllAnswered() {
+  play([
+    [880,  0,    0.1, 0.2],
+    [1100, 0.12, 0.1, 0.2],
+    [1320, 0.24, 0.4, 0.18],
+  ]);
+}

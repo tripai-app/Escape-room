@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ref, get, update } from "firebase/database";
 import { db } from "../firebase";
@@ -9,10 +9,68 @@ function generatePlayerId() {
 
 export default function JoinPage() {
   const nav = useNavigate();
-  const [code, setCode] = useState("");
-  const [name, setName] = useState("");
-  const [error, setError] = useState("");
+  const [code, setCode]       = useState("");
+  const [name, setName]       = useState("");
+  const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Reconnect state
+  const [prevSession, setPrevSession] = useState(null);
+  const [reconnecting, setReconnecting] = useState(false);
+
+  useEffect(() => {
+    const savedId   = localStorage.getItem("nova_player_id");
+    const savedName = localStorage.getItem("nova_player_name");
+    const savedCode = localStorage.getItem("nova_room_code");
+    if (savedId && savedName && savedCode) {
+      setPrevSession({ id: savedId, name: savedName, code: savedCode });
+    }
+  }, []);
+
+  async function handleReconnect() {
+    if (!prevSession) return;
+    setReconnecting(true);
+    setError("");
+    try {
+      const roomSnap = await get(ref(db, `rooms/${prevSession.code}`));
+      if (!roomSnap.exists()) {
+        setError("Dein alter Raum existiert nicht mehr.");
+        clearSession();
+        setReconnecting(false);
+        return;
+      }
+      const room = roomSnap.val();
+      if (room.status === "finished") {
+        setError("Das Spiel in diesem Raum ist bereits beendet.");
+        clearSession();
+        setReconnecting(false);
+        return;
+      }
+      const playerSnap = await get(ref(db, `rooms/${prevSession.code}/players/${prevSession.id}`));
+      if (!playerSnap.exists()) {
+        setError("Dein Spieler-Slot wurde nicht gefunden. Bitte neu beitreten.");
+        clearSession();
+        setReconnecting(false);
+        return;
+      }
+      // Restore session
+      sessionStorage.setItem("nova_player_id",   prevSession.id);
+      sessionStorage.setItem("nova_player_name", prevSession.name);
+      sessionStorage.setItem("nova_room_code",   prevSession.code);
+      nav(room.status === "lobby" ? `/lobby/${prevSession.code}` : `/game/${prevSession.code}`);
+    } catch (err) {
+      setError("Verbindungsfehler beim Wiederherstellen.");
+      console.error(err);
+    }
+    setReconnecting(false);
+  }
+
+  function clearSession() {
+    localStorage.removeItem("nova_player_id");
+    localStorage.removeItem("nova_player_name");
+    localStorage.removeItem("nova_room_code");
+    setPrevSession(null);
+  }
 
   async function handleJoin(e) {
     e.preventDefault();
@@ -30,9 +88,13 @@ export default function JoinPage() {
       if (room.status !== "lobby") { setError("Das Spiel hat bereits begonnen."); setLoading(false); return; }
 
       const playerId = generatePlayerId();
-      sessionStorage.setItem("nova_player_id", playerId);
+      // Save to both sessionStorage AND localStorage (for reconnect)
+      sessionStorage.setItem("nova_player_id",   playerId);
       sessionStorage.setItem("nova_player_name", trimName);
-      sessionStorage.setItem("nova_room_code", trimCode);
+      sessionStorage.setItem("nova_room_code",   trimCode);
+      localStorage.setItem("nova_player_id",     playerId);
+      localStorage.setItem("nova_player_name",   trimName);
+      localStorage.setItem("nova_room_code",     trimCode);
 
       await update(ref(db, `rooms/${trimCode}/players/${playerId}`), {
         name: trimName, score: 0, joinedAt: Date.now(), answeredPuzzles: {},
@@ -77,7 +139,49 @@ export default function JoinPage() {
           </p>
         </div>
 
-        {/* Card */}
+        {/* Reconnect Banner */}
+        {prevSession && (
+          <div style={{
+            background: "rgba(0,229,255,0.07)",
+            border: "1px solid rgba(0,229,255,0.3)",
+            borderLeft: "3px solid var(--cyan)",
+            borderRadius: "0 8px 8px 0",
+            padding: "0.9rem 1rem",
+            marginBottom: "1rem",
+            animation: "fadeUp 0.35s ease forwards",
+          }}>
+            <p style={{ fontSize: "0.65rem", color: "var(--cyan)", fontFamily: "Share Tech Mono, monospace", letterSpacing: "0.1em", marginBottom: "0.4rem" }}>
+              SITZUNG GEFUNDEN
+            </p>
+            <p style={{ color: "var(--text)", fontSize: "0.9rem", fontWeight: 700, marginBottom: "0.6rem" }}>
+              Weitermachen als <span style={{ color: "var(--cyan)" }}>{prevSession.name}</span>?
+              <span style={{ color: "var(--text-dim)", fontWeight: 400, fontSize: "0.78rem", marginLeft: "0.4rem" }}>
+                (Raum {prevSession.code})
+              </span>
+            </p>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                className="btn btn-secondary"
+                style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+                onClick={handleReconnect}
+                disabled={reconnecting}
+              >
+                {reconnecting
+                  ? <span>Verbinde<span className="blink">...</span></span>
+                  : "▶  Weitermachen"}
+              </button>
+              <button
+                className="btn btn-ghost"
+                style={{ padding: "0.5rem 0.75rem", fontSize: "0.82rem", width: "auto" }}
+                onClick={clearSession}
+              >
+                ✕ Ignorieren
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Join Card */}
         <div style={{
           background: "var(--card)",
           border: "1px solid var(--border)",

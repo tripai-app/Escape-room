@@ -10,7 +10,7 @@ import InterludeScreen from "../components/InterludeScreen";
 import GlobalCountdown from "../components/GlobalCountdown";
 import HintPopup from "../components/HintPopup";
 import ConfettiEffect from "../components/ConfettiEffect";
-import { playCorrect, playWrong, startAmbient, stopAmbient, toggleMute, isMuted } from "../utils/sounds";
+import { playCorrect, playWrong, playAllAnswered, startAmbient, stopAmbient, toggleMute, isMuted } from "../utils/sounds";
 
 export default function GamePage() {
   const { code } = useParams();
@@ -30,6 +30,7 @@ export default function GamePage() {
   const [confetti, setConfetti] = useState(false);
   const [hint, setHint] = useState(null);
   const [muted, setMuted] = useState(false);
+  const prevAnsweredCount = useRef(0);
 
   // Host-only states
   const [showHintPanel, setShowHintPanel] = useState(false);
@@ -158,9 +159,18 @@ export default function GamePage() {
 
   const puzzle = room ? PUZZLES[room.currentPuzzle] : null;
   const playerList = Object.entries(players).map(([id, p]) => ({ id, ...p }));
-  const answeredCount = isHost && puzzle
+  const answeredCount = puzzle
     ? playerList.filter(p => p.answeredPuzzles?.[room?.currentPuzzle]).length
     : 0;
+
+  // Bell: ring when all players have answered
+  useEffect(() => {
+    if (!isHost) return;
+    if (playerList.length > 0 && answeredCount === playerList.length && answeredCount > prevAnsweredCount.current) {
+      playAllAnswered();
+    }
+    prevAnsweredCount.current = answeredCount;
+  }, [answeredCount]);
   const freeTextAnswers = isHost && puzzle?.type === "build-slogan"
     ? playerList.filter(p => p.answeredPuzzles?.[room?.currentPuzzle])
     : [];
@@ -195,6 +205,7 @@ export default function GamePage() {
           wasCorrect={lastResult.correct}
           onNext={handleNextPuzzle}
           isHost={isHost}
+          puzzle={PUZZLES[room.currentPuzzle]}
         />
       )}
 
@@ -272,7 +283,9 @@ export default function GamePage() {
                 {/* Fortschritt */}
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}>
                   <p style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
-                    Geantwortet: <span style={{ color: "var(--cyan)", fontWeight: 700 }}>{answeredCount}/{playerList.length}</span>
+                    {answeredCount === playerList.length && playerList.length > 0
+                      ? <span style={{ color: "var(--green)", fontWeight: 700 }}>🔔 Alle haben geantwortet!</span>
+                      : <>Geantwortet: <span style={{ color: "var(--cyan)", fontWeight: 700 }}>{answeredCount}/{playerList.length}</span></>}
                   </p>
                   <div style={{ display: "flex", gap: "0.5rem" }}>
                     {/* Hinweis senden */}
@@ -376,26 +389,57 @@ export default function GamePage() {
                   </div>
                 )}
 
-                {/* Live-Scores */}
-                <div style={{ maxHeight: 150, overflowY: "auto", marginBottom: "0.75rem" }}>
-                  {playerList.sort((a, b) => b.score - a.score).map((p, i) => (
-                    <div key={p.id} style={{
-                      display: "flex", alignItems: "center", gap: "0.5rem",
-                      padding: "0.4rem 0.6rem", marginBottom: "0.25rem",
-                      background: "var(--bg2)", borderRadius: 4, fontSize: "0.88rem",
-                    }}>
-                      <div className="player-avatar" style={{ width: 24, height: 24, fontSize: "0.65rem" }}>
-                        {p.name[0].toUpperCase()}
+                {/* Live-Scores mit Antworten */}
+                <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: "0.75rem" }}>
+                  {playerList.sort((a, b) => b.score - a.score).map((p) => {
+                    const ans = p.answeredPuzzles?.[room.currentPuzzle];
+                    const ansLabel = ans
+                      ? puzzle?.type === "sort"
+                        ? "sortiert"
+                        : puzzle?.type === "build-slogan"
+                        ? "Slogan ✓"
+                        : ans.answer?.toUpperCase()
+                      : null;
+                    return (
+                      <div key={p.id} style={{
+                        display: "flex", alignItems: "center", gap: "0.5rem",
+                        padding: "0.45rem 0.65rem", marginBottom: "0.3rem",
+                        background: ans ? (ans.correct ? "rgba(0,255,136,0.05)" : "rgba(255,34,85,0.05)") : "var(--bg2)",
+                        border: `1px solid ${ans ? (ans.correct ? "rgba(0,255,136,0.2)" : "rgba(255,34,85,0.15)") : "var(--border)"}`,
+                        borderRadius: 5, fontSize: "0.85rem",
+                        transition: "all 0.3s",
+                      }}>
+                        <div className="player-avatar" style={{ width: 24, height: 24, fontSize: "0.62rem" }}>
+                          {p.name[0].toUpperCase()}
+                        </div>
+                        <span style={{ flex: 1, fontWeight: 600 }}>{p.name}</span>
+                        {ans ? (
+                          <span style={{
+                            color: ans.correct ? "var(--green)" : "var(--red)",
+                            fontSize: "0.75rem",
+                            fontFamily: "Share Tech Mono, monospace",
+                            display: "flex", alignItems: "center", gap: "0.3rem",
+                          }}>
+                            <span style={{
+                              background: ans.correct ? "rgba(0,255,136,0.15)" : "rgba(255,34,85,0.15)",
+                              border: `1px solid ${ans.correct ? "rgba(0,255,136,0.4)" : "rgba(255,34,85,0.4)"}`,
+                              borderRadius: 3, padding: "1px 5px", fontSize: "0.7rem",
+                            }}>
+                              {ansLabel}
+                            </span>
+                            {ans.correct ? "✓" : "✗"}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-dim)", fontSize: "0.7rem", fontFamily: "Share Tech Mono, monospace" }}>
+                            <span className="blink">_</span>
+                          </span>
+                        )}
+                        <span style={{ fontFamily: "Orbitron, monospace", color: "var(--yellow)", fontSize: "0.8rem", minWidth: 35, textAlign: "right" }}>
+                          {p.score}
+                        </span>
                       </div>
-                      <span style={{ flex: 1 }}>{p.name}</span>
-                      {p.answeredPuzzles?.[room.currentPuzzle] && (
-                        <span style={{ color: "var(--green)", fontSize: "0.75rem" }}>✓</span>
-                      )}
-                      <span style={{ fontFamily: "Orbitron, monospace", color: "var(--yellow)", fontSize: "0.82rem" }}>
-                        {p.score}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <button className="btn btn-primary" onClick={handleHostInterlude}>
