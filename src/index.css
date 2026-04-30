@@ -58,17 +58,19 @@ h3 { font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; font-weight: 700; l
 .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 10px;
   padding: 1.5rem;
   width: 100%;
   max-width: 480px;
   position: relative;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
 .card::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 2px;
+  border-radius: 10px 10px 0 0;
   background: linear-gradient(90deg, transparent, var(--cyan), transparent);
 }
 
@@ -90,26 +92,30 @@ h3 { font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; font-weight: 700; l
   width: 100%;
 }
 .btn-primary { background: var(--red); color: #fff; box-shadow: var(--glow-red); }
-.btn-primary:hover { background: #ff4477; transform: translateY(-1px); }
+.btn-primary:hover:not(:disabled) { background: #ff4477; transform: translateY(-2px); box-shadow: 0 0 30px rgba(255,34,85,0.5); }
+.btn-primary:active:not(:disabled) { transform: translateY(0); }
 .btn-secondary { background: transparent; color: var(--cyan); border: 1px solid var(--cyan); box-shadow: var(--glow-cyan); }
-.btn-secondary:hover { background: rgba(0,229,255,0.08); transform: translateY(-1px); }
+.btn-secondary:hover:not(:disabled) { background: rgba(0,229,255,0.1); transform: translateY(-2px); box-shadow: 0 0 30px rgba(0,229,255,0.4); }
 .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
-.btn-ghost:hover { border-color: var(--text-dim); color: var(--text); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+.btn-ghost:hover:not(:disabled) { border-color: var(--text-dim); color: var(--text); background: rgba(255,255,255,0.03); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
 
 input, textarea {
   width: 100%;
-  background: var(--bg2);
+  background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: 6px;
   color: var(--text);
   font-family: 'Rajdhani', sans-serif;
   font-size: 1.1rem;
   padding: 0.75rem 1rem;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-input:focus, textarea:focus { border-color: var(--cyan); }
+input:focus, textarea:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(0,229,255,0.12);
+}
 input::placeholder, textarea::placeholder { color: var(--text-dim); }
 
 label {

@@ -8,18 +8,14 @@ export default function LobbyPage() {
   const { code } = useParams();
   const nav = useNavigate();
   const [players, setPlayers] = useState([]);
-  const [room, setRoom] = useState(null);
   const [copied, setCopied] = useState(false);
   const isHost = sessionStorage.getItem("nova_host_code") === code;
-
   const joinUrl = `${window.location.origin}/join`;
 
   useEffect(() => {
-    const roomRef = ref(db, `rooms/${code}`);
-    const unsub = onValue(roomRef, (snap) => {
+    const unsub = onValue(ref(db, `rooms/${code}`), (snap) => {
       if (!snap.exists()) { nav("/"); return; }
       const data = snap.val();
-      setRoom(data);
       setPlayers(Object.values(data.players || {}));
       if (data.status === "intro" || data.status === "playing") nav(`/game/${code}`);
     });
@@ -33,72 +29,79 @@ export default function LobbyPage() {
   function copyLink() {
     navigator.clipboard?.writeText(joinUrl);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 2500);
   }
 
   return (
-    <div className="page" style={{ justifyContent: "flex-start", paddingTop: "1.5rem" }}>
-      <div style={{ width: "100%", maxWidth: 480 }}>
+    <div className="page" style={{ justifyContent: "flex-start", paddingTop: "1.5rem", position: "relative" }}>
+      {/* Glow */}
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 0,
+        background: "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(0,255,136,0.05) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+
+      <div style={{ width: "100%", maxWidth: 480, position: "relative", zIndex: 1 }}>
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: "1.25rem" }}>
-          <span className="badge badge-green" style={{ marginBottom: "0.6rem", display: "inline-block" }}>
-            ● LIVE — WARTERAUM
-          </span>
-          <h2 style={{ marginBottom: "0.2rem" }}>NOVA PROTOCOL</h2>
+        <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: "0.4rem",
+            padding: "0.3rem 0.8rem",
+            background: "rgba(0,255,136,0.08)",
+            border: "1px solid rgba(0,255,136,0.25)",
+            borderRadius: 20, marginBottom: "0.75rem",
+          }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", display: "inline-block", boxShadow: "0 0 8px var(--green)", animation: "blink 1.4s step-end infinite" }} />
+            <span style={{ color: "var(--green)", fontSize: "0.65rem", fontFamily: "Share Tech Mono, monospace", letterSpacing: "0.1em" }}>
+              LIVE — WARTERAUM
+            </span>
+          </div>
+          <h2 style={{ marginBottom: "0.25rem" }}>NOVA PROTOCOL</h2>
           <p style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
             {isHost ? "Zeig den Code — warte auf alle Agenten" : "Warte auf Missionsbeginn..."}
           </p>
         </div>
 
-        {/* Join-Info Card (Host only — das ist das Wichtigste!) */}
+        {/* Host: Join-Info */}
         {isHost && (
           <div style={{
-            background: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: 8,
-            padding: "1.25rem",
-            marginBottom: "1rem",
-            textAlign: "center",
-            position: "relative",
+            background: "var(--card)", border: "1px solid var(--border)",
+            borderRadius: 10, padding: "1.25rem", marginBottom: "1rem",
+            position: "relative", boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
           }}>
             <div style={{
               position: "absolute", top: 0, left: 0, right: 0, height: 2,
               background: "linear-gradient(90deg, transparent, var(--cyan), transparent)",
             }} />
 
-            <p style={{ color: "var(--text-dim)", fontSize: "0.68rem", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "0.75rem", fontFamily: "Share Tech Mono, monospace" }}>
+            <p style={{ color: "var(--text-dim)", fontSize: "0.65rem", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "1rem", fontFamily: "Share Tech Mono, monospace", textAlign: "center" }}>
               Schüler beitreten lassen
             </p>
 
-            {/* Two-column: QR + Code */}
             <div style={{ display: "flex", gap: "1.25rem", alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
-
-              {/* QR Code */}
+              {/* QR */}
               <div style={{
-                background: "#fff",
-                padding: "10px",
-                borderRadius: 8,
-                display: "inline-block",
-                flexShrink: 0,
+                background: "#fff", padding: 10, borderRadius: 8,
+                boxShadow: "0 0 0 1px rgba(0,229,255,0.3)", flexShrink: 0,
               }}>
-                <QRCodeSVG value={joinUrl} size={110} fgColor="#06060f" bgColor="#ffffff" />
+                <QRCodeSVG value={joinUrl} size={108} fgColor="#06060f" bgColor="#ffffff" />
               </div>
 
-              {/* Right side */}
+              {/* Code + URL */}
               <div style={{ textAlign: "center" }}>
-                <p style={{ color: "var(--text-dim)", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.4rem", fontFamily: "Share Tech Mono, monospace" }}>
+                <p style={{ color: "var(--text-dim)", fontSize: "0.62rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.3rem", fontFamily: "Share Tech Mono, monospace" }}>
                   Raum-Code
                 </p>
-                <div className="room-code" style={{ fontSize: "clamp(2.5rem, 12vw, 3.5rem)", marginBottom: "0.5rem" }}>
+                <div className="room-code" style={{ fontSize: "clamp(2.2rem, 10vw, 3rem)", marginBottom: "0.4rem", textShadow: "0 0 30px rgba(0,229,255,0.5)" }}>
                   {code}
                 </div>
-                <p style={{ color: "var(--text-dim)", fontSize: "0.72rem", fontFamily: "Share Tech Mono, monospace", marginBottom: "0.6rem" }}>
+                <p style={{ color: "var(--text-dim)", fontSize: "0.68rem", fontFamily: "Share Tech Mono, monospace", marginBottom: "0.6rem" }}>
                   {joinUrl}
                 </p>
                 <button
                   className="btn btn-ghost"
-                  style={{ padding: "0.4rem 0.9rem", fontSize: "0.8rem", width: "auto" }}
+                  style={{ padding: "0.4rem 0.9rem", fontSize: "0.78rem", width: "auto" }}
                   onClick={copyLink}
                 >
                   {copied ? "✓ Kopiert!" : "📋 Link kopieren"}
@@ -106,7 +109,7 @@ export default function LobbyPage() {
               </div>
             </div>
 
-            <p style={{ color: "var(--text-dim)", fontSize: "0.72rem", marginTop: "0.9rem", fontFamily: "Share Tech Mono, monospace" }}>
+            <p style={{ color: "var(--text-dim)", fontSize: "0.65rem", marginTop: "0.9rem", fontFamily: "Share Tech Mono, monospace", textAlign: "center" }}>
               QR scannen &nbsp;·&nbsp; oder Website öffnen &nbsp;·&nbsp; Code eingeben
             </p>
           </div>
@@ -114,44 +117,50 @@ export default function LobbyPage() {
 
         {/* Player list */}
         <div style={{
-          background: "var(--card)",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          padding: "1.1rem",
-          marginBottom: "1rem",
+          background: "var(--card)", border: "1px solid var(--border)",
+          borderRadius: 10, padding: "1.1rem", marginBottom: "1rem",
           position: "relative",
         }}>
           <div style={{
             position: "absolute", top: 0, left: 0, right: 0, height: 2,
-            background: "linear-gradient(90deg, transparent, var(--red), transparent)",
+            background: "linear-gradient(90deg, transparent, var(--green), transparent)",
           }} />
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-            <h3 style={{ fontSize: "0.78rem", letterSpacing: "0.12em", color: "var(--text-dim)" }}>AGENTEN ONLINE</h3>
-            <span className="badge badge-cyan">{players.length} / ∞</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
+            <h3 style={{ fontSize: "0.72rem", letterSpacing: "0.12em", color: "var(--text-dim)" }}>AGENTEN ONLINE</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <span className="badge badge-green">{players.length}</span>
+              <span style={{ color: "var(--text-dim)", fontSize: "0.68rem", fontFamily: "Share Tech Mono, monospace" }}>bereit</span>
+            </div>
           </div>
 
           {players.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
-              <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginBottom: "0.25rem" }}>
+            <div style={{ textAlign: "center", padding: "1.75rem 0" }}>
+              <div style={{ fontSize: "2rem", marginBottom: "0.5rem", opacity: 0.4 }}>🥷</div>
+              <p style={{ color: "var(--text-dim)", fontSize: "0.82rem", marginBottom: "0.3rem" }}>
                 Noch niemand beigetreten...
               </p>
-              <span style={{ color: "var(--text-dim)", fontSize: "0.7rem", fontFamily: "Share Tech Mono, monospace" }}>
+              <span style={{ color: "var(--text-dim)", fontSize: "0.68rem", fontFamily: "Share Tech Mono, monospace" }}>
                 <span className="blink">_</span> Warte auf Agenten
               </span>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
               {players.map((p, i) => (
-                <div key={p.name + i} className="player-item" style={{
-                  borderRadius: 6,
+                <div key={p.name + i} style={{
+                  display: "flex", alignItems: "center", gap: "0.75rem",
+                  padding: "0.6rem 0.8rem",
+                  background: "var(--bg2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
                   animation: `fadeUp 0.3s ease ${i * 0.06}s both`,
                 }}>
                   <div className="player-avatar">{p.name[0].toUpperCase()}</div>
-                  <span style={{ fontWeight: 700, flex: 1 }}>{p.name}</span>
-                  <span style={{ color: "var(--green)", fontSize: "0.72rem", fontFamily: "Share Tech Mono, monospace" }}>
-                    ● bereit
-                  </span>
+                  <span style={{ fontWeight: 700, flex: 1, fontSize: "0.95rem" }}>{p.name}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", display: "inline-block", boxShadow: "0 0 6px var(--green)" }} />
+                    <span style={{ color: "var(--green)", fontSize: "0.68rem", fontFamily: "Share Tech Mono, monospace" }}>bereit</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -164,16 +173,16 @@ export default function LobbyPage() {
             className="btn btn-primary"
             onClick={startGame}
             disabled={players.length === 0}
-            style={{ fontSize: "1rem", padding: "0.85rem" }}
+            style={{ fontSize: "1rem", padding: "0.9rem" }}
           >
             {players.length === 0
-              ? "Warte auf Spieler..."
+              ? <span><span className="blink">_</span> Warte auf Spieler...</span>
               : `▶  Mission starten  (${players.length} ${players.length === 1 ? "Agent" : "Agenten"})`}
           </button>
         ) : (
           <div style={{
-            textAlign: "center", padding: "0.9rem",
-            border: "1px solid var(--border)", borderRadius: 6,
+            textAlign: "center", padding: "1rem",
+            border: "1px solid var(--border)", borderRadius: 8,
             color: "var(--text-dim)", fontSize: "0.85rem",
             fontFamily: "Share Tech Mono, monospace",
             background: "var(--card)",
@@ -182,13 +191,13 @@ export default function LobbyPage() {
           </div>
         )}
 
-        {/* Student: show code too */}
+        {/* Student: zeige Code */}
         {!isHost && (
-          <div style={{ textAlign: "center", marginTop: "1rem" }}>
-            <p style={{ color: "var(--text-dim)", fontSize: "0.72rem", fontFamily: "Share Tech Mono, monospace", marginBottom: "0.25rem" }}>
+          <div style={{ textAlign: "center", marginTop: "1.25rem" }}>
+            <p style={{ color: "var(--text-dim)", fontSize: "0.65rem", fontFamily: "Share Tech Mono, monospace", letterSpacing: "0.12em", marginBottom: "0.3rem" }}>
               DEIN RAUM-CODE
             </p>
-            <div className="room-code" style={{ fontSize: "2rem" }}>{code}</div>
+            <div className="room-code" style={{ fontSize: "2.2rem" }}>{code}</div>
           </div>
         )}
       </div>

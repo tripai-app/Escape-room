@@ -25,7 +25,7 @@ export default function JoinPage() {
     setLoading(true);
     try {
       const roomSnap = await get(ref(db, `rooms/${trimCode}`));
-      if (!roomSnap.exists()) { setError("Raum nicht gefunden. Code prüfen."); setLoading(false); return; }
+      if (!roomSnap.exists()) { setError("Raum nicht gefunden. Code nochmal prüfen."); setLoading(false); return; }
       const room = roomSnap.val();
       if (room.status !== "lobby") { setError("Das Spiel hat bereits begonnen."); setLoading(false); return; }
 
@@ -39,7 +39,7 @@ export default function JoinPage() {
       });
       nav(`/lobby/${trimCode}`);
     } catch (err) {
-      setError("Verbindungsfehler. Firebase-Config prüfen.");
+      setError("Verbindungsfehler. Bitte erneut versuchen.");
       console.error(err);
     }
     setLoading(false);
@@ -47,21 +47,31 @@ export default function JoinPage() {
 
   return (
     <div className="page" style={{ position: "relative", overflow: "hidden" }}>
-      {/* Bg */}
+      {/* Glow */}
       <div style={{
         position: "fixed", inset: 0, zIndex: 0,
-        background: "radial-gradient(ellipse 70% 50% at 50% 60%, rgba(0,229,255,0.06) 0%, transparent 70%)",
+        background: "radial-gradient(ellipse 70% 50% at 50% 60%, rgba(0,229,255,0.07) 0%, transparent 70%)",
         pointerEvents: "none",
       }} />
 
       <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 400 }}>
-        {/* Top */}
-        <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-          <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>◈</div>
-          <span className="badge badge-cyan" style={{ marginBottom: "0.75rem", display: "inline-block" }}>
+
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
+          <div style={{
+            width: 60, height: 60, borderRadius: 12,
+            border: "2px solid var(--cyan)",
+            background: "rgba(0,229,255,0.08)",
+            boxShadow: "0 0 24px rgba(0,229,255,0.25)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "1.8rem", margin: "0 auto 0.9rem",
+          }}>
+            🥷
+          </div>
+          <span className="badge badge-cyan" style={{ marginBottom: "0.6rem", display: "inline-block" }}>
             INFILTRATION
           </span>
-          <h2 style={{ marginBottom: "0.3rem" }}>Netzwerk beitreten</h2>
+          <h2 style={{ marginBottom: "0.25rem" }}>Netzwerk beitreten</h2>
           <p style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
             Gib den Code deines Lehrers ein
           </p>
@@ -71,9 +81,10 @@ export default function JoinPage() {
         <div style={{
           background: "var(--card)",
           border: "1px solid var(--border)",
-          borderRadius: 8,
+          borderRadius: 10,
           padding: "1.5rem",
           position: "relative",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
         }}>
           <div style={{
             position: "absolute", top: 0, left: 0, right: 0, height: 2,
@@ -86,20 +97,25 @@ export default function JoinPage() {
               <input
                 value={code}
                 onChange={e => setCode(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ""))}
-                placeholder="z.B. 4823"
+                placeholder="0000"
                 maxLength={6}
                 style={{
                   textAlign: "center",
-                  fontSize: "2.2rem",
-                  letterSpacing: "0.4em",
+                  fontSize: "2.4rem",
+                  letterSpacing: "0.5em",
                   fontFamily: "Orbitron, monospace",
-                  fontWeight: 700,
+                  fontWeight: 900,
                   color: "var(--cyan)",
                   padding: "0.9rem",
+                  background: "var(--bg)",
+                  textShadow: code ? "0 0 20px rgba(0,229,255,0.4)" : "none",
+                  transition: "text-shadow 0.3s",
                 }}
                 autoFocus
+                autoComplete="off"
               />
             </div>
+
             <div className="field">
               <label>Dein Deckname</label>
               <input
@@ -107,13 +123,15 @@ export default function JoinPage() {
                 onChange={e => setName(e.target.value)}
                 placeholder="Agent XY..."
                 maxLength={20}
-                style={{ fontSize: "1.1rem" }}
+                style={{ fontSize: "1.05rem" }}
+                autoComplete="off"
               />
             </div>
 
             {error && (
               <div style={{
-                padding: "0.6rem 0.9rem",
+                display: "flex", alignItems: "center", gap: "0.5rem",
+                padding: "0.65rem 0.9rem",
                 background: "rgba(255,34,85,0.08)",
                 border: "1px solid rgba(255,34,85,0.3)",
                 borderRadius: 6,
@@ -129,9 +147,11 @@ export default function JoinPage() {
               className="btn btn-primary"
               type="submit"
               disabled={loading || !code || !name}
-              style={{ fontSize: "1rem", padding: "0.85rem" }}
+              style={{ fontSize: "1rem", padding: "0.9rem" }}
             >
-              {loading ? "Verbinde..." : "▶  Infiltrieren"}
+              {loading
+                ? <span>Verbinde<span className="blink">...</span></span>
+                : "▶  Infiltrieren"}
             </button>
           </form>
         </div>
