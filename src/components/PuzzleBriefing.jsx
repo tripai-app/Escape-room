@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CHARACTERS } from "../data/characters";
 
 export default function PuzzleBriefing({ briefing, puzzleIndex, onDismiss }) {
-  const entries  = Array.isArray(briefing) ? briefing : [briefing];
+  const entries      = Array.isArray(briefing) ? briefing : [briefing];
   const [step,   setStep]  = useState(0);
   const [typed,  setTyped] = useState("");
   const [ready,  setReady] = useState(false);
+  const isAdvancing  = useRef(false);   // guard against double-click
 
-  const current = entries[step];
-  const char    = current ? CHARACTERS[current.character] : null;
-  const isLast  = step === entries.length - 1;
+  const safeStep = Math.min(step, entries.length - 1);
+  const current  = entries[safeStep];
+  const char     = current ? CHARACTERS[current.character] : null;
+  const isLast   = safeStep === entries.length - 1;
 
   // Typewriter effect — restart on each step
   useEffect(() => {
@@ -23,10 +25,14 @@ export default function PuzzleBriefing({ briefing, puzzleIndex, onDismiss }) {
       if (i >= current.text.length) { clearInterval(iv); setReady(true); }
     }, 22);
     return () => clearInterval(iv);
-  }, [step]);
+  }, [safeStep]);
 
   function handleNext() {
-    if (!isLast) { setStep(s => s + 1); }
+    if (isAdvancing.current) return;
+    isAdvancing.current = true;
+    setTimeout(() => { isAdvancing.current = false; }, 250);
+
+    if (!isLast) { setStep(safeStep + 1); }   // captured value, no functional updater
     else { onDismiss(); }
   }
 

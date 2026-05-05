@@ -1,21 +1,25 @@
 import { useState, useEffect, useRef } from "react";
 import { CHARACTERS } from "../data/characters";
 
-// Zeigt Szene für Szene — jede Zeile tippt sich ein (Typewriter)
 export default function CharacterDialogue({ scenes, onDone }) {
-  const [sceneIdx, setSceneIdx] = useState(0);
-  const [lineIdx, setLineIdx]   = useState(0);
-  const [typed, setTyped]       = useState("");
-  const [isTyping, setIsTyping] = useState(true);
-  const [shownLines, setShownLines] = useState([]);
-  const intervalRef = useRef(null);
+  const [sceneIdx,    setSceneIdx]    = useState(0);
+  const [lineIdx,     setLineIdx]     = useState(0);
+  const [typed,       setTyped]       = useState("");
+  const [isTyping,    setIsTyping]    = useState(true);
+  const [shownLines,  setShownLines]  = useState([]);
+  const intervalRef   = useRef(null);
+  const isAdvancing   = useRef(false);   // ← Schutz gegen Doppelklick
 
-  const scene = scenes[sceneIdx];
-  const char  = CHARACTERS[scene.character];
-  const currentLine = scene.lines[lineIdx];
+  // Bounds-Schutz: sceneIdx niemals außerhalb des Arrays
+  const safeSceneIdx  = Math.min(sceneIdx, scenes.length - 1);
+  const scene         = scenes[safeSceneIdx];
+  const char          = scene ? CHARACTERS[scene.character] : null;
+  const safeLineIdx   = scene ? Math.min(lineIdx, scene.lines.length - 1) : 0;
+  const currentLine   = scene?.lines[safeLineIdx] ?? "";
 
   // Typewriter-Effekt für aktuelle Zeile
   useEffect(() => {
+    if (!scene || !char) return;
     setTyped("");
     setIsTyping(true);
     let i = 0;
@@ -32,7 +36,12 @@ export default function CharacterDialogue({ scenes, onDone }) {
   }, [sceneIdx, lineIdx]);
 
   function advance() {
-    // Sofort fertig tippen wenn noch am Tippen
+    // Schutz gegen Doppelklick / zu schnelles Tippen
+    if (isAdvancing.current) return;
+    isAdvancing.current = true;
+    setTimeout(() => { isAdvancing.current = false; }, 250);
+
+    // Noch am Tippen? → Sofort fertig tippen, dann warten
     if (isTyping) {
       clearInterval(intervalRef.current);
       setTyped(currentLine);
@@ -43,13 +52,13 @@ export default function CharacterDialogue({ scenes, onDone }) {
     const newShown = [...shownLines, { char, text: currentLine }];
 
     if (lineIdx + 1 < scene.lines.length) {
-      // Nächste Zeile im selben Auftritt
+      // Nächste Zeile derselben Szene — captured values (kein funktionaler Updater!)
       setShownLines(newShown);
-      setLineIdx(l => l + 1);
+      setLineIdx(lineIdx + 1);
     } else if (sceneIdx + 1 < scenes.length) {
       // Nächste Szene (nächster Charakter)
       setShownLines([]);
-      setSceneIdx(s => s + 1);
+      setSceneIdx(sceneIdx + 1);   // captured value, kein s => s+1
       setLineIdx(0);
     } else {
       // Alles durch → fertig
@@ -57,9 +66,14 @@ export default function CharacterDialogue({ scenes, onDone }) {
     }
   }
 
-  return (
-    <div onClick={advance} style={{ cursor: "pointer", userSelect: "none" }}>
+  // Sicherheitsnetz: falls scene trotzdem undefined ist
+  if (!scene || !char) return null;
 
+  return (
+    <div
+      onClick={advance}
+      style={{ cursor: "pointer", userSelect: "none" }}
+    >
       {/* Bisherige Zeilen dieser Szene (blass) */}
       {shownLines.map((l, i) => (
         <div key={i} style={{ marginBottom: "0.6rem", opacity: 0.4 }}>
@@ -101,7 +115,7 @@ export default function CharacterDialogue({ scenes, onDone }) {
   );
 }
 
-function CharLine({ char, text, active, done }) {
+function CharLine({ char, text, active }) {
   return (
     <div style={{
       display: "flex",
@@ -113,7 +127,6 @@ function CharLine({ char, text, active, done }) {
       padding: active ? "0.9rem" : "0.4rem 0.9rem",
       transition: "all 0.2s",
     }}>
-      {/* Charakter-Avatar */}
       <div style={{
         width: 44, height: 44,
         borderRadius: 10,
@@ -130,7 +143,6 @@ function CharLine({ char, text, active, done }) {
         {char.portrait?.detail}
       </div>
 
-      {/* Text-Bubble */}
       <div style={{ flex: 1, paddingTop: "0.15rem" }}>
         <div style={{
           fontSize: "0.65rem",
