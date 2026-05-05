@@ -205,7 +205,7 @@ export default function JoinPage() {
                 maxLength={6}
                 style={{
                   textAlign: "center",
-                  fontSize: "2.4rem",
+                  fontSize: "clamp(1.8rem, 10vw, 2.4rem)",
                   letterSpacing: "0.5em",
                   fontFamily: "Orbitron, monospace",
                   fontWeight: 900,
@@ -215,7 +215,6 @@ export default function JoinPage() {
                   textShadow: code ? "0 0 20px rgba(0,229,255,0.4)" : "none",
                   transition: "text-shadow 0.3s",
                 }}
-                autoFocus
                 autoComplete="off"
               />
             </div>

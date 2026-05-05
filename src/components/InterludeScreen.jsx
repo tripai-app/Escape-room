@@ -39,7 +39,7 @@ export default function InterludeScreen({ puzzleIndex, players, myId, pointsEarn
       background: "var(--bg)",
       display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "flex-start",
-      padding: "1.5rem",
+      padding: "max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left))",
       overflowY: "auto",
     }}>
       <div style={{ maxWidth: 480, width: "100%" }}>

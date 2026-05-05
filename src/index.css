@@ -47,11 +47,13 @@ h3 { font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; font-weight: 700; l
 
 .page {
   min-height: 100vh;
+  min-height: 100dvh; /* iOS Safari: dynamische Viewport-Höhe */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
+  /* Safe Area für iPhone-Notch und Home-Indikator */
+  padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
   position: relative;
 }
 
@@ -357,16 +359,29 @@ label {
 
 /* ── Mobile Fixes ── */
 @media (max-width: 480px) {
-  .page { padding: 0.85rem; }
+  .page {
+    padding: max(0.85rem, env(safe-area-inset-top)) max(0.85rem, env(safe-area-inset-right)) max(0.85rem, env(safe-area-inset-bottom)) max(0.85rem, env(safe-area-inset-left));
+  }
   .card { padding: 1rem; }
   h1 { font-size: clamp(1.3rem, 8vw, 2rem); }
   h2 { font-size: clamp(0.95rem, 5vw, 1.4rem); }
   .room-code { font-size: clamp(2rem, 14vw, 3.5rem); }
-  .btn { font-size: 0.95rem; padding: 0.7rem 1rem; }
-  .option-btn { padding: 0.75rem 0.75rem; font-size: 0.9rem; }
-  input { font-size: 1rem; }
+  .btn { font-size: 0.95rem; padding: 0.7rem 1rem; min-height: 48px; }
+  .option-btn { padding: 0.75rem 0.75rem; font-size: 0.9rem; min-height: 52px; }
+  input, textarea { font-size: 1rem; } /* verhindert iOS Auto-Zoom */
 }
 
 @media (max-width: 360px) {
-  .page { padding: 0.65rem; }
+  .page {
+    padding: max(0.65rem, env(safe-area-inset-top)) max(0.65rem, env(safe-area-inset-right)) max(0.65rem, env(safe-area-inset-bottom)) max(0.65rem, env(safe-area-inset-left));
+  }
+  .card { padding: 0.8rem; }
+  .option-btn { font-size: 0.85rem; padding: 0.65rem; }
+}
+
+/* Verhindert ungewollten Zoom durch iOS beim Fokus auf Inputs */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  select, textarea, input[type="text"], input[type="number"] {
+    font-size: 16px;
+  }
 }

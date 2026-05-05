@@ -48,7 +48,8 @@ export default function PuzzleBriefing({ briefing, puzzleIndex, onDismiss }) {
       background: bgOverlay,
       display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
-      padding: "1.5rem",
+      padding: "max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left))",
+      overflowY: "auto",   /* scrollbar wenn Inhalt zu groß */
     }}>
       {/* Ambient glow behind character */}
       <div style={{
