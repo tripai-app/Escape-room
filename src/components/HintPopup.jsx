@@ -12,8 +12,8 @@ export default function HintPopup({ hint, onClose }) {
   }, [hint?.timestamp]);
 
   if (!hint || !visible) return null;
-  const char = CHARACTERS[hint.character] || CHARACTERS.void;
-  const emoji = char.id === "void" ? "👩‍💻" : char.id === "signal" ? "🥷" : "🤖";
+  const char  = CHARACTERS[hint.character] || CHARACTERS.void;
+  const emoji = char.portrait?.detail || "💬";
 
   return (
     <div style={{

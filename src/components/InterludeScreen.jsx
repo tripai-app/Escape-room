@@ -105,7 +105,7 @@ export default function InterludeScreen({ puzzleIndex, players, myId, pointsEarn
             animation: "charPulse 2.5s ease-in-out infinite",
             color: char.color,
           }}>
-            {char.emoji}
+            {char.portrait.detail}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{

@@ -6,6 +6,7 @@ import { PUZZLES } from "../data/puzzles";
 import { CHARACTERS } from "../data/characters";
 import StoryIntro from "../components/StoryIntro";
 import PuzzleCard from "../components/PuzzleCard";
+import PuzzleBriefing from "../components/PuzzleBriefing";
 import InterludeScreen from "../components/InterludeScreen";
 import GlobalCountdown from "../components/GlobalCountdown";
 import HintPopup from "../components/HintPopup";
@@ -30,7 +31,9 @@ export default function GamePage() {
   const [confetti, setConfetti] = useState(false);
   const [hint, setHint] = useState(null);
   const [muted, setMuted] = useState(false);
-  const prevAnsweredCount = useRef(0);
+  const [showBriefing, setShowBriefing] = useState(false);
+  const prevAnsweredCount  = useRef(0);
+  const lastBriefedPuzzle  = useRef(-1);
 
   // Host-only states
   const [showHintPanel, setShowHintPanel] = useState(false);
@@ -89,7 +92,7 @@ export default function GamePage() {
     const puzzle = PUZZLES[room.currentPuzzle];
     let correct = false;
 
-    if (puzzle.type === "multiple-choice" || puzzle.type === "error-find") {
+    if (puzzle.type === "multiple-choice") {
       correct = answerId === puzzle.correct;
     } else if (puzzle.type === "sort") {
       correct = answerId === puzzle.correctOrder.join(",");
@@ -163,6 +166,14 @@ export default function GamePage() {
     ? playerList.filter(p => p.answeredPuzzles?.[room?.currentPuzzle]).length
     : 0;
 
+  // Briefing: show character intro when a new puzzle starts
+  useEffect(() => {
+    if (room?.status === "playing" && puzzle?.briefing && room.currentPuzzle !== lastBriefedPuzzle.current) {
+      lastBriefedPuzzle.current = room.currentPuzzle;
+      setShowBriefing(true);
+    }
+  }, [room?.currentPuzzle, room?.status]);
+
   // Bell: ring when all players have answered
   useEffect(() => {
     if (!isHost) return;
@@ -194,6 +205,15 @@ export default function GamePage() {
 
       {/* Story Intro */}
       {showIntro && <StoryIntro onDone={handleIntroEnd} />}
+
+      {/* Puzzle Briefing */}
+      {showBriefing && puzzle?.briefing && (
+        <PuzzleBriefing
+          briefing={puzzle.briefing}
+          puzzleIndex={room.currentPuzzle}
+          onDismiss={() => setShowBriefing(false)}
+        />
+      )}
 
       {/* Interlude */}
       {showInterlude && (

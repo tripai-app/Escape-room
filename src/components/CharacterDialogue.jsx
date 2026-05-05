@@ -127,7 +127,7 @@ function CharLine({ char, text, active, done }) {
         flexShrink: 0,
         transition: "box-shadow 0.3s",
       }}>
-        {char.emoji}
+        {char.portrait?.detail}
       </div>
 
       {/* Text-Bubble */}

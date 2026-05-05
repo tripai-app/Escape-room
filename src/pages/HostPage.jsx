@@ -6,7 +6,6 @@ import { PUZZLES } from "../data/puzzles";
 
 const TYPE_LABELS = {
   "multiple-choice": { label: "Multiple Choice", color: "var(--cyan)" },
-  "error-find":      { label: "Fehler finden",   color: "var(--yellow)" },
   "sort":            { label: "Sortieren",        color: "var(--green)" },
   "build-slogan":    { label: "Slogan schreiben", color: "var(--red)" },
 };

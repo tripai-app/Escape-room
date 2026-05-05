@@ -148,30 +148,11 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
         {renderText(puzzle.question)}
       </p>
 
-      {/* Error-find: Text */}
-      {puzzle.type === "error-find" && (
-        <div style={{
-          background: "var(--bg2)",
-          border: "1px solid rgba(255,214,0,0.2)",
-          borderLeft: "3px solid var(--yellow)",
-          borderRadius: "0 6px 6px 0",
-          padding: "1rem 1.1rem",
-          marginBottom: "1.25rem",
-          fontSize: "0.92rem", lineHeight: 1.85,
-          fontFamily: "Share Tech Mono, monospace",
-          color: "var(--text)",
-        }}>
-          {revealed
-            ? renderErrorHighlight(puzzle.text, puzzle.errors)
-            : puzzle.text}
-        </div>
-      )}
-
       {/* Multiple choice */}
-      {(puzzle.type === "multiple-choice" || puzzle.type === "error-find") && puzzle.options && (
+      {puzzle.type === "multiple-choice" && puzzle.options && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
           {puzzle.options.map(opt => {
-            const isCorrect = opt.id === puzzle.correct || opt.text === puzzle.correct + " Fehler";
+            const isCorrect = opt.id === puzzle.correct;
             let cls = "option-btn";
             if (revealed) {
               if (isCorrect) cls += " correct";
