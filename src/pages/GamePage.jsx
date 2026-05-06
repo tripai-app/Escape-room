@@ -8,6 +8,7 @@ import StoryIntro from "../components/StoryIntro";
 import PuzzleCard from "../components/PuzzleCard";
 import PuzzleBriefing from "../components/PuzzleBriefing";
 import InterludeScreen from "../components/InterludeScreen";
+import CountdownOverlay from "../components/CountdownOverlay";
 import GlobalCountdown from "../components/GlobalCountdown";
 import HintPopup from "../components/HintPopup";
 import ConfettiEffect from "../components/ConfettiEffect";
@@ -24,14 +25,16 @@ export default function GamePage() {
   const [showIntro, setShowIntro] = useState(false);
   const [showInterlude, setShowInterlude] = useState(false);
   const [score, setScore]         = useState(0);
+  const [streak, setStreak]       = useState(0);
   const [answeredThis, setAnsweredThis] = useState(false);
   const [lastResult, setLastResult] = useState({ earned: 0, correct: false });
   const [players, setPlayers]     = useState({});
-  const [flash, setFlash]         = useState(null);  // "correct" | "wrong"
+  const [flash, setFlash]         = useState(null);  // "correct" | "wrong" | "streak" | "first"
   const [confetti, setConfetti]   = useState(false);
   const [hint, setHint]           = useState(null);
   const [muted, setMuted]         = useState(isMuted());
   const [isFullscreen, setIsFullscreen]  = useState(false);
+  const [firstCorrectMap, setFirstCorrectMap] = useState({});
 
   // Host-only states
   const [showHintPanel, setShowHintPanel] = useState(false);
@@ -56,6 +59,9 @@ export default function GamePage() {
       if (data.status === "interlude") setShowInterlude(true);
       if (data.status === "playing" || data.status === "briefing") setShowInterlude(false);
 
+      // Track firstCorrect map for host display
+      if (data.firstCorrect) setFirstCorrectMap(data.firstCorrect);
+
       if (!isHost) {
         const myData = data.players?.[playerId];
         if (data.status === "playing") {
@@ -63,6 +69,7 @@ export default function GamePage() {
           const alreadyAnswered = data.currentPuzzle in myAnswers;
           setAnsweredThis(alreadyAnswered);
           setScore(myData?.score || 0);
+          setStreak(myData?.streak || 0);
 
           // Reconnect: restore lastResult from Firebase if we re-joined mid-puzzle
           if (alreadyAnswered && myAnswers[data.currentPuzzle]) {
@@ -73,6 +80,7 @@ export default function GamePage() {
         if (data.status === "briefing") {
           setAnsweredThis(false);
           setScore(myData?.score || 0);
+          setStreak(myData?.streak || 0);
         }
       }
 
@@ -121,19 +129,21 @@ export default function GamePage() {
     });
   }
 
-  // ── Host startet Rätsel (synchonisiert) ────────────────────────────────────
+  // ── Host startet Rätsel — mit 3-2-1 Countdown ─────────────────────────────
   async function handleStartPuzzle() {
     if (!isHost) return;
+    // puzzleStartedAt liegt 4 Sekunden in der Zukunft → Countdown 3→2→1→LOS!
     await update(ref(db, `rooms/${code}`), {
       status: "playing",
-      puzzleStartedAt: Date.now(),
+      puzzleStartedAt: Date.now() + 4000,
     });
   }
 
   // ── Antwort abgeben ────────────────────────────────────────────────────────
   async function handleAnswer(answerId, timeBonus) {
     if (!playerId || answeredThis) return;
-    const puzzle = PUZZLES[room.currentPuzzle];
+    const puzzle   = PUZZLES[room.currentPuzzle];
+    const pIdx     = room.currentPuzzle;
     let correct = false;
     let earned  = 0;
 
@@ -159,32 +169,59 @@ export default function GamePage() {
       }
 
     } else if (puzzle.type === "build-slogan" || puzzle.type === "brainstorm") {
-      // Lehrer bewertet manuell
       correct = false;
       earned  = 0;
     }
 
+    // ── Streak Bonus ─────────────────────────────────────────────────────────
+    const prevStreak  = players[playerId]?.streak || 0;
+    const newStreak   = correct ? prevStreak + 1 : 0;
+    let streakBonus   = 0;
+    let isStreakMile  = false;
+    if (correct && newStreak > 0 && newStreak % 3 === 0) {
+      streakBonus  = 50;
+      isStreakMile = true;
+      earned      += streakBonus;
+    }
+
+    // ── Schnellster-Finger Bonus ──────────────────────────────────────────────
+    let firstBlood = false;
+    if (correct && !room.firstCorrect?.[pIdx]) {
+      firstBlood  = true;
+      earned     += 25;
+    }
+
     const newScore = score + earned;
-    await update(ref(db, `rooms/${code}/players/${playerId}`), {
+    const updates  = {
       score: newScore,
-      [`answeredPuzzles/${room.currentPuzzle}`]: { answer: answerId, correct, earned },
-    });
+      streak: newStreak,
+      [`answeredPuzzles/${pIdx}`]: { answer: answerId, correct, earned },
+    };
+    // Claim fastest-finger slot (race condition acceptable for classroom)
+    const firebaseUpdates = { [`rooms/${code}/players/${playerId}`]: updates };
+    if (firstBlood) {
+      firebaseUpdates[`rooms/${code}/firstCorrect/${pIdx}`] = playerId;
+    }
+    await update(ref(db), firebaseUpdates);
 
     setScore(newScore);
-    setLastResult({ earned, correct });
+    setStreak(newStreak);
+    setLastResult({ earned, correct, streakBonus, firstBlood });
     setAnsweredThis(true);
 
     // Sound + Flash
     if (puzzle.type !== "build-slogan" && puzzle.type !== "brainstorm") {
       if (correct) {
         playCorrect();
-        setFlash("correct");
+        if (isStreakMile)        setFlash("streak");
+        else if (firstBlood)     setFlash("first");
+        else                     setFlash("correct");
         if (room.currentPuzzle === PUZZLES.length - 1) setConfetti(true);
       } else {
         playWrong();
         setFlash("wrong");
       }
-      setTimeout(() => setFlash(null), 700);
+      setTimeout(() => setFlash(null), 1200);
     }
   }
 
@@ -204,6 +241,7 @@ export default function GamePage() {
         status: "briefing",
         currentPuzzle: next,
         puzzleStartedAt: null,
+        // firstCorrect bleibt pro Puzzle-Index gespeichert — kein Reset nötig
       });
     }
   }
@@ -255,6 +293,16 @@ export default function GamePage() {
     ? playerList.filter(p => p.answeredPuzzles?.[room?.currentPuzzle]).length
     : 0;
 
+  // Rang des Spielers basierend auf aktuellem Score
+  const myRank = playerList.length > 0
+    ? playerList.filter(p => (p.score || 0) > score).length + 1
+    : 1;
+
+  // Countdown aktiv wenn puzzleStartedAt in der Zukunft liegt
+  const showCountdown = room?.status === "playing"
+    && room?.puzzleStartedAt
+    && room.puzzleStartedAt > Date.now();
+
   // Ready count: players who set readyAt === currentPuzzle
   const readyCount = room
     ? Object.values(players).filter(p => p.readyAt === room.currentPuzzle).length
@@ -298,12 +346,45 @@ export default function GamePage() {
       {/* Flash-Overlays */}
       {flash === "correct" && <div className="green-flash" />}
       {flash === "wrong"   && <div className="red-flash"   />}
+      {flash === "streak"  && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 998, pointerEvents: "none",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            fontFamily: "Orbitron, monospace", fontWeight: 900,
+            fontSize: "clamp(1.8rem, 8vw, 3rem)",
+            color: "var(--yellow)", textShadow: "0 0 40px rgba(255,214,0,0.8)",
+            animation: "cdLos 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards",
+          }}>
+            🔥 STREAK x{streak}!
+          </div>
+        </div>
+      )}
+      {flash === "first" && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 998, pointerEvents: "none",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            fontFamily: "Orbitron, monospace", fontWeight: 900,
+            fontSize: "clamp(1.5rem, 7vw, 2.5rem)",
+            color: "var(--cyan)", textShadow: "0 0 40px rgba(0,229,255,0.8)",
+            animation: "cdLos 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards",
+          }}>
+            ⚡ ERSTER! +25
+          </div>
+        </div>
+      )}
 
       {/* Konfetti */}
       <ConfettiEffect trigger={confetti} />
 
       {/* Story Intro */}
       {showIntro && <StoryIntro onDone={handleIntroEnd} />}
+
+      {/* 3-2-1 Countdown Overlay */}
+      {showCountdown && <CountdownOverlay puzzleStartedAt={room.puzzleStartedAt} />}
 
       {/* Puzzle Briefing — driven by room.status === "briefing" */}
       {showBriefing && puzzle?.briefing && (
@@ -379,7 +460,30 @@ export default function GamePage() {
             </button>
 
             {!isHost && (
-              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                {/* Streak Indikator */}
+                {streak >= 2 && (
+                  <span style={{
+                    fontSize: "0.68rem", fontFamily: "Share Tech Mono, monospace",
+                    color: "var(--yellow)", background: "rgba(255,214,0,0.1)",
+                    border: "1px solid rgba(255,214,0,0.3)", borderRadius: 4,
+                    padding: "1px 5px",
+                  }}>
+                    🔥×{streak}
+                  </span>
+                )}
+                {/* Rang */}
+                {playerList.length > 1 && (
+                  <span style={{
+                    fontSize: "0.68rem", fontFamily: "Share Tech Mono, monospace",
+                    color: myRank === 1 ? "var(--yellow)" : "var(--text-dim)",
+                    background: myRank === 1 ? "rgba(255,214,0,0.08)" : "transparent",
+                    border: myRank === 1 ? "1px solid rgba(255,214,0,0.2)" : "none",
+                    borderRadius: 4, padding: myRank === 1 ? "1px 5px" : "0",
+                  }}>
+                    {myRank === 1 ? "👑 #1" : `#${myRank}`}
+                  </span>
+                )}
                 <span style={{ color: "var(--text-dim)", fontSize: "0.78rem" }}>{playerName}</span>
                 <span className="score-display" style={{ fontSize: "1rem" }}>{score}</span>
               </div>
@@ -401,20 +505,36 @@ export default function GamePage() {
             {/* Spieler: geantwortet */}
             {!isHost && answeredThis && (
               <div style={{
-                marginTop: "1rem", padding: "0.75rem", textAlign: "center",
+                marginTop: "1rem", padding: "0.85rem", textAlign: "center",
                 background: lastResult.correct ? "rgba(0,255,136,0.06)" : "rgba(255,34,85,0.06)",
                 border: `1px solid ${lastResult.correct ? "rgba(0,255,136,0.2)" : "rgba(255,34,85,0.2)"}`,
                 borderRadius: 6,
               }}>
                 <p style={{
+                  fontFamily: "Orbitron, monospace", fontWeight: 700,
+                  fontSize: "1.5rem",
                   color: lastResult.correct ? "var(--green)" : "var(--red)",
-                  fontFamily: "Share Tech Mono, monospace", fontSize: "0.85rem",
+                  textShadow: lastResult.correct ? "0 0 20px rgba(0,255,136,0.5)" : "0 0 20px rgba(255,34,85,0.5)",
+                  marginBottom: "0.3rem",
                 }}>
-                  {lastResult.correct
-                    ? `✓ Richtig! +${lastResult.earned} Punkte`
-                    : `✗ Falsch — +${lastResult.earned} Punkte`}
+                  {lastResult.correct ? `+${lastResult.earned}` : `+${lastResult.earned}`}
                 </p>
-                <p style={{ color: "var(--text-dim)", fontSize: "0.75rem", marginTop: "0.25rem" }}>
+                {/* Bonus-Labels */}
+                <div style={{ display: "flex", justifyContent: "center", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.3rem" }}>
+                  {lastResult.correct && <span style={{ fontSize: "0.72rem", color: "var(--green)", fontFamily: "Share Tech Mono, monospace" }}>✓ Richtig</span>}
+                  {!lastResult.correct && <span style={{ fontSize: "0.72rem", color: "var(--red)", fontFamily: "Share Tech Mono, monospace" }}>✗ Falsch</span>}
+                  {lastResult.firstBlood && (
+                    <span style={{ fontSize: "0.72rem", color: "var(--cyan)", fontFamily: "Share Tech Mono, monospace", background: "rgba(0,229,255,0.1)", borderRadius: 4, padding: "1px 6px" }}>
+                      ⚡ Erster! +25
+                    </span>
+                  )}
+                  {lastResult.streakBonus > 0 && (
+                    <span style={{ fontSize: "0.72rem", color: "var(--yellow)", fontFamily: "Share Tech Mono, monospace", background: "rgba(255,214,0,0.1)", borderRadius: 4, padding: "1px 6px" }}>
+                      🔥 Streak +50
+                    </span>
+                  )}
+                </div>
+                <p style={{ color: "var(--text-dim)", fontSize: "0.75rem" }}>
                   Warte auf nächstes Rätsel...
                 </p>
               </div>
@@ -546,6 +666,7 @@ export default function GamePage() {
                 <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: "0.75rem" }}>
                   {playerList.sort((a, b) => b.score - a.score).map((p) => {
                     const ans = p.answeredPuzzles?.[room.currentPuzzle];
+                    const isFirstCorrect = firstCorrectMap[room.currentPuzzle] === p.id;
                     const ansLabel = ans
                       ? puzzle?.type === "sort"       ? "sortiert"
                       : puzzle?.type === "build-slogan" ? "Slogan ✓"
@@ -563,7 +684,11 @@ export default function GamePage() {
                         <div className="player-avatar" style={{ width: 24, height: 24, fontSize: "0.62rem" }}>
                           {p.name[0].toUpperCase()}
                         </div>
-                        <span style={{ flex: 1, fontWeight: 600 }}>{p.name}</span>
+                        <span style={{ flex: 1, fontWeight: 600 }}>
+                          {p.name}
+                          {isFirstCorrect && <span style={{ color: "var(--cyan)", fontSize: "0.65rem", marginLeft: "0.3rem" }}>⚡</span>}
+                          {(p.streak || 0) >= 3 && <span style={{ color: "var(--yellow)", fontSize: "0.65rem", marginLeft: "0.2rem" }}>🔥</span>}
+                        </span>
                         {ans ? (
                           <span style={{
                             color: ans.correct ? "var(--green)" : "var(--red)",

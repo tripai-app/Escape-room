@@ -65,10 +65,14 @@ export default function EndPage() {
       players.forEach(p => {
         updates[`rooms/${code}/players/${p.id}/score`] = 0;
         updates[`rooms/${code}/players/${p.id}/answeredPuzzles`] = {};
+        updates[`rooms/${code}/players/${p.id}/streak`] = 0;
+        updates[`rooms/${code}/players/${p.id}/readyAt`] = null;
       });
       updates[`rooms/${code}/status`] = "lobby";
       updates[`rooms/${code}/currentPuzzle`] = 0;
       updates[`rooms/${code}/startedAt`] = null;
+      updates[`rooms/${code}/puzzleStartedAt`] = null;
+      updates[`rooms/${code}/firstCorrect`] = null;
       updates[`rooms/${code}/hint`] = null;
       await update(ref(db), updates);
       nav(`/lobby/${code}`);
@@ -78,7 +82,7 @@ export default function EndPage() {
     setRestarting(false);
   }
 
-  const totalPossible = PUZZLES.reduce((s, p) => s + p.points + 50, 0);
+  const totalPossible = PUZZLES.reduce((s, p) => s + p.points + 100, 0);
   const myPlayer = players.find(p => p.id === myId);
   const myRank   = players.findIndex(p => p.id === myId) + 1;
   const top3     = players.slice(0, 3);

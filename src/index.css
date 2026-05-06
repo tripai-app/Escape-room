@@ -363,6 +363,28 @@ label {
   50% { border-color: rgba(255,34,85,1); box-shadow: 0 0 12px rgba(255,34,85,0.4); }
 }
 
+/* ── Countdown Overlay ── */
+@keyframes cdPop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  80%  { transform: scale(0.95); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+@keyframes cdLos {
+  0%   { transform: scale(0.3) rotate(-5deg); opacity: 0; }
+  60%  { transform: scale(1.2) rotate(2deg);  opacity: 1; }
+  80%  { transform: scale(0.95) rotate(0); }
+  100% { transform: scale(1) rotate(0);       opacity: 1; }
+}
+@keyframes cdGlitch {
+  0%   { transform: translateX(0); opacity: 1; }
+  20%  { transform: translateX(-8px); }
+  40%  { transform: translateX(12px); }
+  60%  { transform: translateX(-4px); }
+  80%  { transform: translateX(6px);  opacity: 0.6; }
+  100% { transform: translateX(0);    opacity: 0; }
+}
+
 /* ── Match-Pair Pop-Animation ── */
 @keyframes matchPop {
   0%   { transform: scale(1); }
