@@ -116,6 +116,10 @@ export function toggleMute() {
 
 export function isMuted() { return muted; }
 
+export function playMatchConnect() {
+  play([[880, 0, 0.05, 0.18], [1320, 0.04, 0.1, 0.14]]);
+}
+
 export function playAllAnswered() {
   play([
     [880,  0,    0.1, 0.2],

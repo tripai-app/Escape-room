@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ref, onValue, update } from "firebase/database";
 import { db } from "../firebase";
@@ -16,32 +16,34 @@ import { playCorrect, playWrong, playAllAnswered, startAmbient, stopAmbient, tog
 export default function GamePage() {
   const { code } = useParams();
   const nav = useNavigate();
-  const isHost = sessionStorage.getItem("nova_host_code") === code;
+  const isHost   = sessionStorage.getItem("nova_host_code") === code;
   const playerId = sessionStorage.getItem("nova_player_id");
   const playerName = sessionStorage.getItem("nova_player_name");
 
-  const [room, setRoom] = useState(null);
+  const [room, setRoom]           = useState(null);
   const [showIntro, setShowIntro] = useState(false);
   const [showInterlude, setShowInterlude] = useState(false);
-  const [score, setScore] = useState(0);
+  const [score, setScore]         = useState(0);
   const [answeredThis, setAnsweredThis] = useState(false);
   const [lastResult, setLastResult] = useState({ earned: 0, correct: false });
-  const [players, setPlayers] = useState({});
-  const [flash, setFlash] = useState(null); // "correct" | "wrong"
-  const [confetti, setConfetti] = useState(false);
-  const [hint, setHint] = useState(null);
-  const [muted, setMuted] = useState(false);
-  const [showBriefing, setShowBriefing] = useState(false);
-  const prevAnsweredCount  = useRef(0);
-  const lastBriefedPuzzle  = useRef(-1);
+  const [players, setPlayers]     = useState({});
+  const [flash, setFlash]         = useState(null);  // "correct" | "wrong"
+  const [confetti, setConfetti]   = useState(false);
+  const [hint, setHint]           = useState(null);
+  const [muted, setMuted]         = useState(isMuted());
+  const [isFullscreen, setIsFullscreen]  = useState(false);
 
   // Host-only states
   const [showHintPanel, setShowHintPanel] = useState(false);
-  const [hintChar, setHintChar] = useState("void");
-  const [hintText, setHintText] = useState("");
+  const [hintChar, setHintChar]   = useState("void");
+  const [hintText, setHintText]   = useState("");
   const [freeTextGrades, setFreeTextGrades] = useState({});
-  const [customPoints, setCustomPoints] = useState({});
+  const [customPoints, setCustomPoints]     = useState({});
 
+  const prevAnsweredCount = useRef(0);
+  const ambientStarted    = useRef(false);
+
+  // ── Firebase listener ──────────────────────────────────────────────────────
   useEffect(() => {
     const unsub = onValue(ref(db, `rooms/${code}`), (snap) => {
       if (!snap.exists()) { nav("/"); return; }
@@ -49,15 +51,29 @@ export default function GamePage() {
       setRoom(data);
       setPlayers(data.players || {});
 
-      if (data.status === "intro") { setShowIntro(true); setShowInterlude(false); }
-      if (data.status === "finished") nav(`/end/${code}`);
+      if (data.status === "intro")     { setShowIntro(true); setShowInterlude(false); }
+      if (data.status === "finished")  nav(`/end/${code}`);
       if (data.status === "interlude") setShowInterlude(true);
-      if (data.status === "playing") setShowInterlude(false);
+      if (data.status === "playing" || data.status === "briefing") setShowInterlude(false);
 
-      if (data.status === "playing" && !isHost) {
-        const myAnswers = data.players?.[playerId]?.answeredPuzzles || {};
-        setAnsweredThis(data.currentPuzzle in myAnswers);
-        setScore(data.players?.[playerId]?.score || 0);
+      if (!isHost) {
+        const myData = data.players?.[playerId];
+        if (data.status === "playing") {
+          const myAnswers = myData?.answeredPuzzles || {};
+          const alreadyAnswered = data.currentPuzzle in myAnswers;
+          setAnsweredThis(alreadyAnswered);
+          setScore(myData?.score || 0);
+
+          // Reconnect: restore lastResult from Firebase if we re-joined mid-puzzle
+          if (alreadyAnswered && myAnswers[data.currentPuzzle]) {
+            const saved = myAnswers[data.currentPuzzle];
+            setLastResult({ earned: saved.earned || 0, correct: saved.correct || false });
+          }
+        }
+        if (data.status === "briefing") {
+          setAnsweredThis(false);
+          setScore(myData?.score || 0);
+        }
       }
 
       // Hint für Spieler
@@ -68,25 +84,53 @@ export default function GamePage() {
     return () => unsub();
   }, [code]);
 
-  // Ambient Musik starten wenn Spiel beginnt
+  // ── Ambient: nur einmal starten ─────────────────────────────────────────────
   useEffect(() => {
-    if (room?.status === "playing" || room?.status === "interlude") {
+    const active = ["playing", "interlude", "briefing"];
+    if (room?.status && active.includes(room.status) && !ambientStarted.current) {
       startAmbient();
+      ambientStarted.current = true;
     }
-    return () => stopAmbient();
   }, [room?.status]);
 
+  useEffect(() => () => stopAmbient(), []);
+
+  // ── freeTextGrades zurücksetzen bei neuem Rätsel ───────────────────────────
+  useEffect(() => {
+    setFreeTextGrades({});
+    setCustomPoints({});
+  }, [room?.currentPuzzle]);
+
+  // ── Intro → Briefing ───────────────────────────────────────────────────────
   async function handleIntroEnd() {
     setShowIntro(false);
     if (isHost) {
       await update(ref(db, `rooms/${code}`), {
-        status: "playing",
+        status: "briefing",
         currentPuzzle: 0,
         startedAt: Date.now(),
       });
     }
   }
 
+  // ── Student bereit ─────────────────────────────────────────────────────────
+  async function handlePlayerReady() {
+    if (!playerId) return;
+    await update(ref(db, `rooms/${code}/players/${playerId}`), {
+      readyAt: room.currentPuzzle,
+    });
+  }
+
+  // ── Host startet Rätsel (synchonisiert) ────────────────────────────────────
+  async function handleStartPuzzle() {
+    if (!isHost) return;
+    await update(ref(db, `rooms/${code}`), {
+      status: "playing",
+      puzzleStartedAt: Date.now(),
+    });
+  }
+
+  // ── Antwort abgeben ────────────────────────────────────────────────────────
   async function handleAnswer(answerId, timeBonus) {
     if (!playerId || answeredThis) return;
     const puzzle = PUZZLES[room.currentPuzzle];
@@ -106,7 +150,6 @@ export default function GamePage() {
         const answers      = JSON.parse(answerId);
         const correctCount = puzzle.pairs.filter(p => answers[p.leftId] === p.rightId).length;
         correct = correctCount === puzzle.pairs.length;
-        // Teilpunkte bei Match-Rätseln
         const ratio = correctCount / puzzle.pairs.length;
         earned  = correct
           ? puzzle.points + timeBonus
@@ -115,14 +158,13 @@ export default function GamePage() {
         earned = 0;
       }
 
-    } else if (puzzle.type === "build-slogan") {
-      // Kein Auto-Score -- Lehrer vergibt Punkte manuell
+    } else if (puzzle.type === "build-slogan" || puzzle.type === "brainstorm") {
+      // Lehrer bewertet manuell
       correct = false;
       earned  = 0;
     }
 
     const newScore = score + earned;
-
     await update(ref(db, `rooms/${code}/players/${playerId}`), {
       score: newScore,
       [`answeredPuzzles/${room.currentPuzzle}`]: { answer: answerId, correct, earned },
@@ -132,8 +174,8 @@ export default function GamePage() {
     setLastResult({ earned, correct });
     setAnsweredThis(true);
 
-    // Sound + Flash — nicht für Slogan (kein Auto-Urteil)
-    if (puzzle.type !== "build-slogan") {
+    // Sound + Flash
+    if (puzzle.type !== "build-slogan" && puzzle.type !== "brainstorm") {
       if (correct) {
         playCorrect();
         setFlash("correct");
@@ -146,13 +188,23 @@ export default function GamePage() {
     }
   }
 
+  // ── Zwischenstand anzeigen ─────────────────────────────────────────────────
+  async function handleHostInterlude() {
+    await update(ref(db, `rooms/${code}`), { status: "interlude" });
+  }
+
+  // ── Nächstes Rätsel → Briefing ─────────────────────────────────────────────
   async function handleNextPuzzle() {
     if (!isHost) return;
     const next = room.currentPuzzle + 1;
     if (next >= PUZZLES.length) {
       await update(ref(db, `rooms/${code}`), { status: "finished" });
     } else {
-      await update(ref(db, `rooms/${code}`), { status: "playing", currentPuzzle: next });
+      await update(ref(db, `rooms/${code}`), {
+        status: "briefing",
+        currentPuzzle: next,
+        puzzleStartedAt: null,
+      });
     }
   }
 
@@ -161,10 +213,7 @@ export default function GamePage() {
     await handleNextPuzzle();
   }
 
-  async function handleHostInterlude() {
-    await update(ref(db, `rooms/${code}`), { status: "interlude" });
-  }
-
+  // ── Hinweis senden ─────────────────────────────────────────────────────────
   async function sendHint() {
     if (!hintText.trim()) return;
     await update(ref(db, `rooms/${code}`), {
@@ -174,32 +223,53 @@ export default function GamePage() {
     setShowHintPanel(false);
   }
 
+  // ── Lehrer vergibt Punkte (Freitext) ───────────────────────────────────────
   async function grantCustomPoints(pid, points) {
     const player = players[pid];
     if (!player) return;
     const pts = parseInt(points);
     if (isNaN(pts) || pts < 0) return;
-    // Slogan-Rätsel: Basispunkte waren 0, Teacher-Punkte direkt addieren
     const newScore = (player.score || 0) + pts;
     await update(ref(db, `rooms/${code}/players/${pid}`), { score: newScore });
     setFreeTextGrades(prev => ({ ...prev, [pid]: { awarded: pts } }));
   }
 
-  const puzzle = room ? PUZZLES[room.currentPuzzle] : null;
+  // ── Fullscreen ─────────────────────────────────────────────────────────────
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }
+  useEffect(() => {
+    function onFsChange() { setIsFullscreen(!!document.fullscreenElement); }
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  // ── Derived state ──────────────────────────────────────────────────────────
+  const puzzle     = room ? PUZZLES[room.currentPuzzle] : null;
   const playerList = Object.entries(players).map(([id, p]) => ({ id, ...p }));
   const answeredCount = puzzle
     ? playerList.filter(p => p.answeredPuzzles?.[room?.currentPuzzle]).length
     : 0;
 
-  // Briefing: show character intro when a new puzzle starts
-  useEffect(() => {
-    if (room?.status === "playing" && puzzle?.briefing && room.currentPuzzle !== lastBriefedPuzzle.current) {
-      lastBriefedPuzzle.current = room.currentPuzzle;
-      setShowBriefing(true);
-    }
-  }, [room?.currentPuzzle, room?.status]);
+  // Ready count: players who set readyAt === currentPuzzle
+  const readyCount = room
+    ? Object.values(players).filter(p => p.readyAt === room.currentPuzzle).length
+    : 0;
+  const totalPlayers = playerList.length;
+  const playerReady  = !isHost && room
+    ? (players[playerId]?.readyAt === room.currentPuzzle)
+    : false;
 
-  // Bell: ring when all players have answered
+  // Freitext-Antworten (Slogan + Brainstorm)
+  const freeTextAnswers = isHost && (puzzle?.type === "build-slogan" || puzzle?.type === "brainstorm")
+    ? playerList.filter(p => p.answeredPuzzles?.[room?.currentPuzzle])
+    : [];
+
+  // Bell: ring when all players answered
   useEffect(() => {
     if (!isHost) return;
     if (playerList.length > 0 && answeredCount === playerList.length && answeredCount > prevAnsweredCount.current) {
@@ -207,9 +277,11 @@ export default function GamePage() {
     }
     prevAnsweredCount.current = answeredCount;
   }, [answeredCount]);
-  const freeTextAnswers = isHost && puzzle?.type === "build-slogan"
-    ? playerList.filter(p => p.answeredPuzzles?.[room?.currentPuzzle])
-    : [];
+
+  // ── Interlude fix: if student reconnects during interlude, show it ─────────
+  useEffect(() => {
+    if (room?.status === "interlude") setShowInterlude(true);
+  }, [room?.status]);
 
   if (!room) return (
     <div className="page">
@@ -219,11 +291,13 @@ export default function GamePage() {
     </div>
   );
 
+  const showBriefing = room.status === "briefing";
+
   return (
     <div className="page" style={{ justifyContent: "flex-start", paddingTop: "1.25rem" }}>
       {/* Flash-Overlays */}
       {flash === "correct" && <div className="green-flash" />}
-      {flash === "wrong" && <div className="red-flash" />}
+      {flash === "wrong"   && <div className="red-flash"   />}
 
       {/* Konfetti */}
       <ConfettiEffect trigger={confetti} />
@@ -231,12 +305,17 @@ export default function GamePage() {
       {/* Story Intro */}
       {showIntro && <StoryIntro onDone={handleIntroEnd} />}
 
-      {/* Puzzle Briefing */}
+      {/* Puzzle Briefing — driven by room.status === "briefing" */}
       {showBriefing && puzzle?.briefing && (
         <PuzzleBriefing
           briefing={puzzle.briefing}
           puzzleIndex={room.currentPuzzle}
-          onDismiss={() => setShowBriefing(false)}
+          isHost={isHost}
+          readyCount={readyCount}
+          totalPlayers={totalPlayers}
+          onReady={handlePlayerReady}
+          onStart={handleStartPuzzle}
+          isStudentReady={playerReady}
         />
       )}
 
@@ -260,7 +339,8 @@ export default function GamePage() {
       )}
 
       <div style={{ width: "100%", maxWidth: 520 }}>
-        {/* Top-Bar */}
+
+        {/* ── Top-Bar ──────────────────────────────────────────────────────── */}
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
           marginBottom: "1rem", gap: "0.5rem",
@@ -269,11 +349,23 @@ export default function GamePage() {
             NOVA PROTOCOL
           </span>
 
-          {/* Countdown */}
           {room.startedAt && <GlobalCountdown startedAt={room.startedAt} />}
 
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            {/* Mute-Button */}
+            {/* Fullscreen (für Projektor) */}
+            <button
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "Vollbild beenden" : "Vollbild (Projektor)"}
+              style={{
+                background: "transparent", border: "1px solid var(--border)",
+                borderRadius: 4, color: "var(--text-dim)",
+                fontSize: "0.85rem", cursor: "pointer", padding: "0.2rem 0.4rem",
+              }}
+            >
+              {isFullscreen ? "⛶" : "⛶"}
+            </button>
+
+            {/* Mute */}
             <button
               onClick={() => { const m = toggleMute(); setMuted(m); }}
               title={muted ? "Ton ein" : "Ton aus"}
@@ -296,10 +388,15 @@ export default function GamePage() {
           </div>
         </div>
 
-        {/* Rätsel */}
+        {/* ── Rätsel ───────────────────────────────────────────────────────── */}
         {puzzle && room.status === "playing" && (
           <div className="card">
-            <PuzzleCard puzzle={puzzle} onAnswer={handleAnswer} isHost={isHost} />
+            <PuzzleCard
+              puzzle={puzzle}
+              onAnswer={handleAnswer}
+              isHost={isHost}
+              puzzleStartedAt={room.puzzleStartedAt}
+            />
 
             {/* Spieler: geantwortet */}
             {!isHost && answeredThis && (
@@ -313,7 +410,9 @@ export default function GamePage() {
                   color: lastResult.correct ? "var(--green)" : "var(--red)",
                   fontFamily: "Share Tech Mono, monospace", fontSize: "0.85rem",
                 }}>
-                  {lastResult.correct ? `✓ Richtig! +${lastResult.earned} Punkte` : `✗ Falsch — +${lastResult.earned} Punkte`}
+                  {lastResult.correct
+                    ? `✓ Richtig! +${lastResult.earned} Punkte`
+                    : `✗ Falsch — +${lastResult.earned} Punkte`}
                 </p>
                 <p style={{ color: "var(--text-dim)", fontSize: "0.75rem", marginTop: "0.25rem" }}>
                   Warte auf nächstes Rätsel...
@@ -321,19 +420,18 @@ export default function GamePage() {
               </div>
             )}
 
-            {/* Host Controls */}
+            {/* ── Host Controls ─────────────────────────────────────────── */}
             {isHost && (
               <div style={{ marginTop: "1.25rem", borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
 
                 {/* Fortschritt */}
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
                   <p style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
                     {answeredCount === playerList.length && playerList.length > 0
                       ? <span style={{ color: "var(--green)", fontWeight: 700 }}>🔔 Alle haben geantwortet!</span>
                       : <>Geantwortet: <span style={{ color: "var(--cyan)", fontWeight: 700 }}>{answeredCount}/{playerList.length}</span></>}
                   </p>
                   <div style={{ display: "flex", gap: "0.5rem" }}>
-                    {/* Hinweis senden */}
                     <button
                       className="btn btn-ghost"
                       style={{ width: "auto", padding: "0.3rem 0.6rem", fontSize: "0.78rem" }}
@@ -341,7 +439,6 @@ export default function GamePage() {
                     >
                       💡 Hinweis
                     </button>
-                    {/* Überspringen */}
                     <button
                       className="btn btn-ghost"
                       style={{ width: "auto", padding: "0.3rem 0.6rem", fontSize: "0.78rem", color: "var(--yellow)", borderColor: "rgba(255,214,0,0.3)" }}
@@ -391,61 +488,69 @@ export default function GamePage() {
                   </div>
                 )}
 
-                {/* Freitext-Bewertung für Slogan-Rätsel */}
-                {puzzle.type === "build-slogan" && freeTextAnswers.length > 0 && (
+                {/* Freitext-Bewertung (Slogan + Brainstorm) */}
+                {freeTextAnswers.length > 0 && (
                   <div style={{
                     background: "var(--bg2)", border: "1px solid var(--border)",
                     borderRadius: 8, padding: "0.9rem", marginBottom: "0.75rem",
                   }}>
                     <p style={{ fontSize: "0.72rem", color: "var(--yellow)", marginBottom: "0.6rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                      ✏️ Slogans bewerten
+                      {puzzle.type === "brainstorm" ? "🧠 Brainstorms bewerten" : "✏️ Slogans bewerten"}
                     </p>
                     {freeTextAnswers.map(p => (
                       <div key={p.id} style={{
-                        display: "flex", gap: "0.5rem", alignItems: "center",
-                        marginBottom: "0.5rem", flexWrap: "wrap",
+                        marginBottom: "0.75rem",
+                        padding: "0.6rem", borderRadius: 6,
+                        background: "var(--bg)", border: "1px solid var(--border)",
                       }}>
-                        <span style={{ color: "var(--cyan)", fontSize: "0.8rem", minWidth: 70 }}>{p.name}:</span>
-                        <span style={{ flex: 1, color: "var(--text)", fontSize: "0.82rem", fontStyle: "italic" }}>
-                          "{p.answeredPuzzles[room.currentPuzzle]?.answer}"
-                        </span>
-                        {!freeTextGrades[p.id] ? (
-                          <>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
+                          <span style={{ color: "var(--cyan)", fontSize: "0.8rem", fontWeight: 700 }}>{p.name}</span>
+                          {freeTextGrades[p.id] && (
+                            <span style={{ color: "var(--green)", fontSize: "0.75rem" }}>
+                              ✓ +{freeTextGrades[p.id]?.awarded} Pkt.
+                            </span>
+                          )}
+                        </div>
+                        <p style={{
+                          color: "var(--text)", fontSize: "0.84rem",
+                          fontStyle: "italic", lineHeight: 1.55, marginBottom: "0.5rem",
+                          fontFamily: puzzle.type === "brainstorm" ? "Share Tech Mono, monospace" : "inherit",
+                          whiteSpace: "pre-wrap",
+                        }}>
+                          {p.answeredPuzzles[room.currentPuzzle]?.answer}
+                        </p>
+                        {!freeTextGrades[p.id] && (
+                          <div style={{ display: "flex", gap: "0.5rem" }}>
                             <input
-                              type="number" min={0} max={300}
-                              placeholder="Pkt."
+                              type="number" min={0} max={puzzle.points + 100}
+                              placeholder="Punkte"
                               value={customPoints[p.id] || ""}
                               onChange={e => setCustomPoints(prev => ({ ...prev, [p.id]: e.target.value }))}
-                              style={{ width: 55, padding: "0.3rem 0.4rem", fontSize: "0.85rem" }}
+                              style={{ width: 70, padding: "0.3rem 0.4rem", fontSize: "0.85rem" }}
                             />
                             <button
                               className="btn btn-primary"
-                              style={{ width: "auto", padding: "0.3rem 0.6rem", fontSize: "0.78rem" }}
-                              onClick={() => grantCustomPoints(p.id, customPoints[p.id] || 100)}
+                              style={{ flex: 1, padding: "0.3rem 0.6rem", fontSize: "0.78rem" }}
+                              onClick={() => grantCustomPoints(p.id, customPoints[p.id] || 50)}
                             >
-                              ✓
+                              ✓ Vergeben
                             </button>
-                          </>
-                        ) : (
-                          <span style={{ color: "var(--green)", fontSize: "0.78rem" }}>
-                            ✓ +{freeTextGrades[p.id]?.awarded ?? "?"} Pkt.
-                          </span>
+                          </div>
                         )}
                       </div>
                     ))}
                   </div>
                 )}
 
-                {/* Live-Scores mit Antworten */}
+                {/* Live-Scores */}
                 <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: "0.75rem" }}>
                   {playerList.sort((a, b) => b.score - a.score).map((p) => {
                     const ans = p.answeredPuzzles?.[room.currentPuzzle];
                     const ansLabel = ans
-                      ? puzzle?.type === "sort"
-                        ? "sortiert"
-                        : puzzle?.type === "build-slogan"
-                        ? "Slogan ✓"
-                        : ans.answer?.toUpperCase()
+                      ? puzzle?.type === "sort"       ? "sortiert"
+                      : puzzle?.type === "build-slogan" ? "Slogan ✓"
+                      : puzzle?.type === "brainstorm"   ? "Liste ✓"
+                      : ans.answer?.toUpperCase()
                       : null;
                     return (
                       <div key={p.id} style={{
@@ -453,8 +558,7 @@ export default function GamePage() {
                         padding: "0.45rem 0.65rem", marginBottom: "0.3rem",
                         background: ans ? (ans.correct ? "rgba(0,255,136,0.05)" : "rgba(255,34,85,0.05)") : "var(--bg2)",
                         border: `1px solid ${ans ? (ans.correct ? "rgba(0,255,136,0.2)" : "rgba(255,34,85,0.15)") : "var(--border)"}`,
-                        borderRadius: 5, fontSize: "0.85rem",
-                        transition: "all 0.3s",
+                        borderRadius: 5, fontSize: "0.85rem", transition: "all 0.3s",
                       }}>
                         <div className="player-avatar" style={{ width: 24, height: 24, fontSize: "0.62rem" }}>
                           {p.name[0].toUpperCase()}
@@ -463,8 +567,7 @@ export default function GamePage() {
                         {ans ? (
                           <span style={{
                             color: ans.correct ? "var(--green)" : "var(--red)",
-                            fontSize: "0.75rem",
-                            fontFamily: "Share Tech Mono, monospace",
+                            fontSize: "0.75rem", fontFamily: "Share Tech Mono, monospace",
                             display: "flex", alignItems: "center", gap: "0.3rem",
                           }}>
                             <span style={{
@@ -494,6 +597,13 @@ export default function GamePage() {
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Briefing-Wartezustand für Spieler (während Host noch nicht gestartet hat) */}
+        {!isHost && room.status === "briefing" && !puzzle?.briefing && (
+          <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-dim)", fontFamily: "Share Tech Mono, monospace" }}>
+            <span className="blink">_</span> Warte auf Briefing...
           </div>
         )}
       </div>

@@ -33,10 +33,16 @@ body::before {
   inset: 0;
   background: repeating-linear-gradient(
     0deg, transparent, transparent 2px,
-    rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px
+    rgba(0,0,0,0.18) 2px, rgba(0,0,0,0.18) 4px
   );
   pointer-events: none;
   z-index: 9999;
+  animation: scanMove 8s linear infinite;
+}
+
+@keyframes scanMove {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 100px; }
 }
 
 #root { min-height: 100vh; display: flex; flex-direction: column; }
@@ -355,6 +361,28 @@ label {
 @keyframes pulse-red {
   0%, 100% { border-color: rgba(255,34,85,0.5); }
   50% { border-color: rgba(255,34,85,1); box-shadow: 0 0 12px rgba(255,34,85,0.4); }
+}
+
+/* ── Match-Pair Pop-Animation ── */
+@keyframes matchPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.07); }
+  70%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+/* ── Score Counter Animation ── */
+@keyframes scoreCount {
+  0%   { transform: scale(1.4) translateY(-4px); opacity: 0; }
+  50%  { opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.score-animate { animation: scoreCount 0.5s ease forwards; }
+
+/* ── Briefing-Puls für Bereit-Zustand ── */
+@keyframes readyPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,136,0); }
+  50%       { box-shadow: 0 0 0 6px rgba(0,255,136,0.15); }
 }
 
 /* ── Mobile Fixes ── */

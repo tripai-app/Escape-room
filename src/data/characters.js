@@ -92,10 +92,10 @@ export const STORY_SCENES = [
     character: "void",
     lines: [
       "Ignoriert sie. Genau das ist ihre Methode -- sie redet, sie provoziert, sie macht euch unsicher.",
-      "Sechs Sicherheitsstufen. Sechs Räume tief im Herzen von NOVAs digitalem Netzwerk.",
+      "Sieben Sicherheitsstufen. Sieben Räume tief im Herzen von NOVAs digitalem Netzwerk.",
       "Dr. Void hat die Karte. SIGNAL hat den geheimen Zugang. Aber die Rätsel -- die muss jeder selbst lösen.",
       "Denn H.E.R.A.L.D. hat das System mit nur einer Schwachstelle gebaut: Wer Sprache wirklich versteht, lässt sich von ihr nicht mehr manipulieren.",
-      "Löst alle sechs Rätsel -- und ich kann den Kerncode von innen heraus abschalten.",
+      "Löst alle sieben Rätsel -- und ich kann den Kerncode von innen heraus abschalten.",
       "Schafft ihr es nicht rechtzeitig, geht H.E.R.A.L.D. um Mitternacht in den Dauerbetrieb. Dann ist es zu spät. Ich zähle auf euch.",
     ],
   },
@@ -110,35 +110,48 @@ export const STORY_SCENES = [
 ];
 
 // ── Nachrichten zwischen den Rätseln ────────────────────────────────────────
+// Index 0 = nach Rätsel 1 · Index 6 = nach Rätsel 7 (build-slogan)
 export const INTERLUDE_MESSAGES = [
+  // 0 — nach Raum 1: MC Farbpsychologie
   {
     character: "void",
     correct: "Erste Sicherheitsstufe überwunden. Ich sehe, wie H.E.R.A.L.D.s System reagiert -- es versucht, sich anzupassen. Das bedeutet: Ihr seid auf dem richtigen Weg. Weiter so.",
     wrong: "Macht euch keine Sorgen. H.E.R.A.L.D. setzt darauf, dass ihr euch unter Druck Fehler erlaubt. Atmet kurz durch -- und dann weiter. Das nächste Rätsel gehört euch.",
   },
+  // 1 — nach Raum 2: Brainstorm Werbe-Matrix
   {
     character: "signal",
-    correct: "Stufe zwei erledigt. Ich habe drei Monate gebraucht, um in dieses Netzwerk zu kommen -- und ihr seid in Minuten so weit. Ich fange an, euch zu mögen.",
+    correct: "Gut gemacht -- ihr habt das Netz kartiert. Werbung ist wirklich überall. Je mehr ihr das erkennt, desto schwerer kann H.E.R.A.L.D. euch manipulieren. Weiter.",
     wrong: "H.E.R.A.L.D. lacht gerade -- buchstäblich, sie hat einen Lach-Algorithmus. Das gefällt mir nicht. Nächste Runde: konzentriert euch, macht es besser.",
   },
+  // 2 — nach Raum 3: Match Slogans → Marken
   {
     character: "herald",
     correct: "[ WARNUNG -- SICHERHEITSSTUFE 3 ÜBERWUNDEN ] Unerwartetes Ergebnis. Ihr versteht die Struktur meines Systems besser als vorhergesagt. Das... ist interessant.",
     wrong: "[ STATUS: KONTROLLIERT ] Macht weiter. Ihr seid exakt dort, wo ich euch haben möchte. Jeder Fehler gibt mir mehr Daten über euch.",
   },
+  // 3 — nach Raum 4: MC Emotionale Konditionierung
   {
     character: "void",
-    correct: "Nur noch eine Stufe! Ich kann den Kerncode sehen -- er liegt direkt vor uns. Haltet durch, ich brauche noch zwei Minuten für die Entschlüsselung. Ihr schafft das!",
-    wrong: "Fast da. Ich weiß, es fühlt sich gerade nicht so an -- aber ihr seid näher dran, als ihr denkt. Eine letzte Stufe. Alles, was ihr gelernt habt, jetzt einsetzen.",
+    correct: "Emotionale Konditionierung erkannt und neutralisiert. H.E.R.A.L.D.s stärkste Waffe -- und ihr habt sie durchschaut. Drei Räume noch. Haltet durch.",
+    wrong: "H.E.R.A.L.D. nutzt Bilder, Musik und Atmosphäre statt Fakten -- genau deshalb ist es so schwer zu durchschauen. Jetzt wisst ihr, wie es läuft. Weiter.",
   },
+  // 4 — nach Raum 5: Sort AIDA
   {
     character: "signal",
-    correct: "Das war stark. Dr. Void -- du kannst jetzt den Schalter umlegen. Letzter Raum. Alles oder nichts.",
-    wrong: "Fast da. Was auch immer passiert ist -- ihr habt es bis hierher geschafft. Letzter Raum. Jetzt alles geben.",
+    correct: "AIDA geknackt. A-I-D-A -- das ist H.E.R.A.L.D.s Kern-Algorithmus, seit 1898 unverändert. Noch zwei Räume. Ihr seid fast drin.",
+    wrong: "AIDA -- Aufmerksamkeit, Interesse, Verlangen, Aktion. Merkt euch das. H.E.R.A.L.D. läuft genau nach diesem Schema. Noch zwei Räume -- nächstes Mal sitzt es.",
   },
+  // 5 — nach Raum 6: Match Stilmittel
   {
     character: "void",
-    correct: "Slogan eingereicht. Der Lehrer bewertet gerade. Wartet kurz -- das war Raum 6, der letzte. Ich starte den Abschalt-Befehl.",
+    correct: "Rhetorik-Kammer überwunden! Alliteration, Metapher, Wiederholung -- ihr erkennt jetzt die Werkzeuge. Letzter Raum. Das ist euer Gegenschlag. Ich zähle auf euch.",
+    wrong: "Fast da. Was auch immer passiert ist -- ihr habt es bis hierher geschafft. Letzter Raum. Jetzt alles geben.",
+  },
+  // 6 — nach Raum 7: Build-Slogan (Gegenschlag)
+  {
+    character: "void",
+    correct: "Slogan eingereicht. Der Lehrer bewertet gerade. Wartet kurz -- das war Raum 7, der letzte. Ich starte den Abschalt-Befehl.",
     wrong: "Slogan eingereicht. Der Lehrer bewertet gerade -- kein Richtig oder Falsch hier, nur Mut und Klarheit. Das war der letzte Raum.",
   },
 ];

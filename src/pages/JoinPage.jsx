@@ -19,6 +19,16 @@ export default function JoinPage() {
   const [reconnecting, setReconnecting] = useState(false);
 
   useEffect(() => {
+    // Sitzung nach 12h automatisch ablaufen lassen
+    const savedTime = localStorage.getItem("nova_session_time");
+    const isExpired = !savedTime || (Date.now() - parseInt(savedTime)) > 12 * 3600 * 1000;
+    if (isExpired) {
+      localStorage.removeItem("nova_player_id");
+      localStorage.removeItem("nova_player_name");
+      localStorage.removeItem("nova_room_code");
+      localStorage.removeItem("nova_session_time");
+      return;
+    }
     const savedId   = localStorage.getItem("nova_player_id");
     const savedName = localStorage.getItem("nova_player_name");
     const savedCode = localStorage.getItem("nova_room_code");
@@ -69,6 +79,7 @@ export default function JoinPage() {
     localStorage.removeItem("nova_player_id");
     localStorage.removeItem("nova_player_name");
     localStorage.removeItem("nova_room_code");
+    localStorage.removeItem("nova_session_time");
     setPrevSession(null);
   }
 
@@ -87,17 +98,27 @@ export default function JoinPage() {
       const room = roomSnap.val();
       if (room.status !== "lobby") { setError("Das Spiel hat bereits begonnen."); setLoading(false); return; }
 
+      // Doppelte Namen verhindern: " (2)", " (3)" anhängen
+      let finalName = trimName;
+      let suffix = 1;
+      const existingNames = Object.values(room.players || {}).map(p => p.name);
+      while (existingNames.includes(finalName)) {
+        suffix++;
+        finalName = `${trimName} (${suffix})`;
+      }
+
       const playerId = generatePlayerId();
       // Save to both sessionStorage AND localStorage (for reconnect)
       sessionStorage.setItem("nova_player_id",   playerId);
-      sessionStorage.setItem("nova_player_name", trimName);
+      sessionStorage.setItem("nova_player_name", finalName);
       sessionStorage.setItem("nova_room_code",   trimCode);
       localStorage.setItem("nova_player_id",     playerId);
-      localStorage.setItem("nova_player_name",   trimName);
+      localStorage.setItem("nova_player_name",   finalName);
       localStorage.setItem("nova_room_code",     trimCode);
+      localStorage.setItem("nova_session_time",  String(Date.now()));
 
       await update(ref(db, `rooms/${trimCode}/players/${playerId}`), {
-        name: trimName, score: 0, joinedAt: Date.now(), answeredPuzzles: {},
+        name: finalName, score: 0, joinedAt: Date.now(), answeredPuzzles: {},
       });
       nav(`/lobby/${trimCode}`);
     } catch (err) {

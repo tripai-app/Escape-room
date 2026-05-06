@@ -9,6 +9,7 @@ const TYPE_LABELS = {
   "sort":            { label: "Sortieren",        color: "var(--green)"  },
   "match":           { label: "Zuordnen",         color: "var(--yellow)" },
   "build-slogan":    { label: "Slogan schreiben", color: "var(--red)"    },
+  "brainstorm":      { label: "Brainstorm",       color: "#00e5ff"       },
 };
 
 function generateCode() {
@@ -138,7 +139,7 @@ export default function HostPage() {
           {[
             { label: "Rätsel", value: PUZZLES.length, color: "var(--cyan)" },
             { label: "Max. Punkte", value: totalPoints + "+", color: "var(--yellow)" },
-            { label: "Min. ca.", value: "55 min", color: "var(--green)" },
+            { label: "Min. ca.", value: "65 min", color: "var(--green)" },
           ].map(item => (
             <div key={item.label} style={{
               flex: 1, textAlign: "center",

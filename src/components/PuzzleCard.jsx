@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { PUZZLES } from "../data/puzzles";
+import { playMatchConnect, playCountdownTick, playAllAnswered } from "../utils/sounds";
 
-export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
+export default function PuzzleCard({ puzzle, onAnswer, isHost, puzzleStartedAt }) {
   const [selected, setSelected]         = useState(null);
   const [revealed, setRevealed]         = useState(false);
   const [timeLeft, setTimeLeft]         = useState(puzzle.timeLimit);
@@ -9,24 +10,39 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
   const [freeText, setFreeText]         = useState("");
   const [dragIdx, setDragIdx]           = useState(null);
   const [touchOver, setTouchOver]       = useState(null);
+  // ── Brainstorm-State ───────────────────────────────────────────────────────
+  const [brainstormItems, setBrainstormItems] = useState([""]);
   // ── Match-Puzzle-State ─────────────────────────────────────────────────────
   const [selectedLeft,  setSelectedLeft]  = useState(null);
   const [userMatches,   setUserMatches]   = useState({});
   const [shuffledRight, setShuffledRight] = useState(
     () => puzzle.pairs ? [...puzzle.pairs].sort(() => Math.random() - 0.5) : []
   );
-  const touchStart = useRef(null);
+  const touchStart    = useRef(null);
+  const tickPlayed    = useRef(false);
+  const allMatchedRef = useRef(false);
 
+  // ── Timer initialisieren: server-sync wenn puzzleStartedAt vorhanden ──────
   useEffect(() => {
     setSelected(null); setRevealed(false);
-    setTimeLeft(puzzle.timeLimit);
     setSortOrder(puzzle.items ? [...puzzle.items] : []);
     setFreeText("");
+    setBrainstormItems([""]);
     setSelectedLeft(null);
     setUserMatches({});
     setShuffledRight(puzzle.pairs ? [...puzzle.pairs].sort(() => Math.random() - 0.5) : []);
-  }, [puzzle.id]);
+    tickPlayed.current    = false;
+    allMatchedRef.current = false;
 
+    if (puzzleStartedAt) {
+      const elapsed = Math.floor((Date.now() - puzzleStartedAt) / 1000);
+      setTimeLeft(Math.max(0, puzzle.timeLimit - elapsed));
+    } else {
+      setTimeLeft(puzzle.timeLimit);
+    }
+  }, [puzzle.id, puzzleStartedAt]);
+
+  // ── Timer-Tick ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (revealed || isHost) return;
     if (timeLeft <= 0) {
@@ -37,6 +53,12 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
       }
       return;
     }
+    if (timeLeft <= 10 && !tickPlayed.current) {
+      tickPlayed.current = true;
+    }
+    if (timeLeft <= 10) {
+      playCountdownTick();
+    }
     const t = setInterval(() => setTimeLeft(s => s - 1), 1000);
     return () => clearInterval(t);
   }, [timeLeft, revealed]);
@@ -44,14 +66,14 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
   function handleSubmit(answerId, bonus) {
     if (revealed) return;
     setRevealed(true);
-    const timeBonus = bonus !== undefined ? bonus : Math.round((timeLeft / puzzle.timeLimit) * 50);
+    const timeBonus = bonus !== undefined ? bonus : Math.round((timeLeft / puzzle.timeLimit) * 100);
     onAnswer(answerId, timeBonus);
   }
 
   function pickOption(id) {
     if (revealed || isHost) return;
     setSelected(id);
-    handleSubmit(id, Math.round((timeLeft / puzzle.timeLimit) * 50));
+    handleSubmit(id, Math.round((timeLeft / puzzle.timeLimit) * 100));
   }
 
   // ── Match-Puzzle-Interaktion ───────────────────────────────────────────────
@@ -62,14 +84,29 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
 
   function handleMatchRight(rightId) {
     if (revealed || isHost || !selectedLeft) return;
+    let nextMatches;
     setUserMatches(prev => {
       const next = { ...prev };
-      // Altes Mapping für diesen rechten Slot entfernen
       Object.keys(next).forEach(k => { if (next[k] === rightId) delete next[k]; });
       next[selectedLeft] = rightId;
+      nextMatches = next;
       return next;
     });
+    playMatchConnect();
     setSelectedLeft(null);
+    // Auto-submit when all pairs matched
+    setTimeout(() => {
+      setUserMatches(current => {
+        if (!allMatchedRef.current && Object.keys(current).length === puzzle.pairs.length) {
+          allMatchedRef.current = true;
+          playAllAnswered();
+          setTimeout(() => {
+            handleSubmit(JSON.stringify(current), Math.round((timeLeft / puzzle.timeLimit) * 100));
+          }, 600);
+        }
+        return current;
+      });
+    }, 50);
   }
 
   function moveItem(from, to) {
@@ -100,54 +137,58 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
     setTouchOver(null);
   }
 
-  // ── Error-Text Highlighting ─────────────────────────────────────────────
-  function renderErrorHighlight(text, errors) {
-    if (!errors?.length) return <span>{text}</span>;
-    let segments = [{ text, isError: false }];
-    errors.forEach(err => {
-      const out = [];
-      segments.forEach(seg => {
-        if (seg.isError) { out.push(seg); return; }
-        const parts = seg.text.split(err.wrong);
-        parts.forEach((part, i) => {
-          if (part) out.push({ text: part, isError: false });
-          if (i < parts.length - 1) out.push({ text: err.wrong, isError: true, correct: err.correct });
-        });
-      });
-      segments = out;
-    });
-    return (
-      <>
-        {segments.map((s, i) =>
-          s.isError
-            ? <span key={i} title={"Richtig: " + s.correct} style={{
-                background: "rgba(255,34,85,0.22)", color: "var(--red)",
-                borderBottom: "2px solid var(--red)", borderRadius: 2,
-                padding: "0 2px", cursor: "help",
-              }}>{s.text}</span>
-            : <span key={i}>{s.text}</span>
-        )}
-      </>
-    );
+  // ── Brainstorm helpers ─────────────────────────────────────────────────────
+  const minItems = puzzle.minItems || 3;
+  const filledItems = brainstormItems.filter(s => s.trim().length > 0);
+  const canSubmitBrainstorm = filledItems.length >= minItems;
+
+  function updateBrainstormItem(idx, val) {
+    setBrainstormItems(prev => prev.map((s, i) => i === idx ? val : s));
+  }
+  function addBrainstormItem() {
+    setBrainstormItems(prev => [...prev, ""]);
+  }
+  function removeBrainstormItem(idx) {
+    if (brainstormItems.length <= 1) return;
+    setBrainstormItems(prev => prev.filter((_, i) => i !== idx));
+  }
+  function submitBrainstorm() {
+    handleSubmit(filledItems.join("\n"), Math.round((timeLeft / puzzle.timeLimit) * 100));
   }
 
-  const timerPct  = (timeLeft / puzzle.timeLimit) * 100;
+  const timerPct   = (timeLeft / puzzle.timeLimit) * 100;
   const timerColor = timerPct > 50 ? "var(--green)" : timerPct > 25 ? "var(--yellow)" : "var(--red)";
   const isCritical = timeLeft <= 10 && !revealed && !isHost;
 
   return (
     <div className="fade-up">
 
-      {/* Header */}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.85rem", gap: "0.5rem" }}>
-        <div>
-          <span className="badge badge-red" style={{ marginBottom: "0.2rem", display: "inline-block" }}>
-            RAUM {puzzle.id + 1}/{PUZZLES.length}
-          </span>
-          <div style={{ color: "var(--text-dim)", fontSize: "0.72rem", fontFamily: "Share Tech Mono, monospace" }}>
-            {puzzle.roomSubtitle}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          {/* Große Raum-Nummer */}
+          <div style={{
+            width: 44, height: 44, borderRadius: 10,
+            border: "2px solid var(--cyan)",
+            background: "rgba(0,229,255,0.08)",
+            boxShadow: "0 0 16px rgba(0,229,255,0.25)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <span style={{ fontFamily: "Orbitron, monospace", fontWeight: 900, fontSize: "1.1rem", color: "var(--cyan)" }}>
+              {puzzle.id + 1}
+            </span>
+          </div>
+          <div>
+            <div style={{ fontFamily: "Orbitron, monospace", fontWeight: 700, color: "var(--cyan)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>
+              RAUM {puzzle.id + 1}/{PUZZLES.length}
+            </div>
+            <div style={{ color: "var(--text-dim)", fontSize: "0.68rem", fontFamily: "Share Tech Mono, monospace" }}>
+              {puzzle.roomSubtitle}
+            </div>
           </div>
         </div>
+
         {!isHost && (
           <div style={{
             display: "flex", alignItems: "center", gap: "0.4rem",
@@ -175,7 +216,7 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
       {/* Title + points */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem" }}>
         <h3 style={{ color: "var(--cyan)", fontSize: "1.05rem" }}>{puzzle.room}</h3>
-        <span className="badge badge-yellow" style={{ fontSize: "0.68rem" }}>bis {puzzle.points + 50} Pkt.</span>
+        <span className="badge badge-yellow" style={{ fontSize: "0.68rem" }}>bis {puzzle.points + 100} Pkt.</span>
       </div>
 
       {/* Question */}
@@ -183,7 +224,7 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
         {renderText(puzzle.question)}
       </p>
 
-      {/* Multiple choice */}
+      {/* ── Multiple choice ─────────────────────────────────────────────────── */}
       {puzzle.type === "multiple-choice" && puzzle.options && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
           {puzzle.options.map(opt => {
@@ -214,7 +255,7 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
         </div>
       )}
 
-      {/* Sort puzzle — Desktop drag + Mobile touch + Pfeile */}
+      {/* ── Sort puzzle ─────────────────────────────────────────────────────── */}
       {puzzle.type === "sort" && (
         <div>
           <p style={{ color: "var(--text-dim)", fontSize: "0.78rem", marginBottom: "0.75rem", fontFamily: "Share Tech Mono, monospace" }}>
@@ -222,8 +263,8 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
           </p>
           <div onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
             {sortOrder.map((item, idx) => {
-              const isRight = revealed && puzzle.correctOrder[idx] === item.id;
-              const isWrong = revealed && puzzle.correctOrder[idx] !== item.id;
+              const isRight   = revealed && puzzle.correctOrder[idx] === item.id;
+              const isWrong   = revealed && puzzle.correctOrder[idx] !== item.id;
               const isHovered = touchOver === idx && touchStart.current !== null;
               return (
                 <div
@@ -297,6 +338,28 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
                 : "① Links eine Kategorie wählen  ②  Rechts das Beispiel zuordnen"}
           </p>
 
+          {!revealed && !isHost && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: "0.5rem",
+              marginBottom: "0.6rem",
+            }}>
+              <div style={{
+                flex: 1, height: 4, borderRadius: 2,
+                background: "var(--bg2)", border: "1px solid var(--border)", overflow: "hidden",
+              }}>
+                <div style={{
+                  height: "100%", borderRadius: 2,
+                  width: `${(Object.keys(userMatches).length / puzzle.pairs.length) * 100}%`,
+                  background: Object.keys(userMatches).length === puzzle.pairs.length ? "var(--green)" : "var(--cyan)",
+                  transition: "width 0.3s ease",
+                }} />
+              </div>
+              <span style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "0.68rem", color: "var(--text-dim)", flexShrink: 0 }}>
+                {Object.keys(userMatches).length}/{puzzle.pairs.length}
+              </span>
+            </div>
+          )}
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 0.7rem" }}>
 
             {/* Linke Spalte */}
@@ -305,10 +368,10 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
                 KATEGORIE
               </div>
               {puzzle.pairs.map(pair => {
-                const matched    = userMatches[pair.leftId];
-                const isSelected = selectedLeft === pair.leftId;
-                const isCorrect  = revealed && matched === pair.rightId;
-                const isWrong    = revealed && matched && matched !== pair.rightId;
+                const matched     = userMatches[pair.leftId];
+                const isSelected  = selectedLeft === pair.leftId;
+                const isCorrect   = revealed && matched === pair.rightId;
+                const isWrong     = revealed && matched && matched !== pair.rightId;
                 const isUnmatched = revealed && !matched;
                 return (
                   <button key={pair.leftId}
@@ -330,6 +393,7 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
                       transition: "all 0.15s",
                       transform: isSelected ? "scale(1.02)" : "none",
                       textAlign: "left",
+                      animation: isCorrect ? "matchPop 0.35s cubic-bezier(0.34,1.56,0.64,1)" : "none",
                     }}
                   >
                     <span style={{ fontSize: "0.62rem", flexShrink: 0, opacity: isSelected ? 1 : 0 }}>▶</span>
@@ -347,12 +411,12 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
                 BEISPIEL
               </div>
               {shuffledRight.map(pair => {
-                const matchedByLeft   = Object.entries(userMatches).find(([, r]) => r === pair.rightId)?.[0];
-                const origPair        = puzzle.pairs.find(p => p.rightId === pair.rightId);
-                const isCorrect       = revealed && matchedByLeft === origPair?.leftId;
-                const isWrong         = revealed && matchedByLeft && !isCorrect;
-                const isUnmatched     = revealed && !matchedByLeft;
-                const isActivatable   = !revealed && !isHost && selectedLeft !== null;
+                const matchedByLeft = Object.entries(userMatches).find(([, r]) => r === pair.rightId)?.[0];
+                const origPair      = puzzle.pairs.find(p => p.rightId === pair.rightId);
+                const isCorrect     = revealed && matchedByLeft === origPair?.leftId;
+                const isWrong       = revealed && matchedByLeft && !isCorrect;
+                const isUnmatched   = revealed && !matchedByLeft;
+                const isActivatable = !revealed && !isHost && selectedLeft !== null;
                 return (
                   <button key={pair.rightId}
                     onClick={() => handleMatchRight(pair.rightId)}
@@ -360,9 +424,9 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
                     style={{
                       display: "flex", alignItems: "center", gap: "0.4rem",
                       width: "100%", padding: "0.6rem 0.7rem", marginBottom: "0.4rem",
-                      background: isCorrect    ? "rgba(0,255,136,0.08)"
-                        : isWrong              ? "rgba(255,34,85,0.06)"
-                        : matchedByLeft        ? "rgba(255,214,0,0.06)"
+                      background: isCorrect  ? "rgba(0,255,136,0.08)"
+                        : isWrong            ? "rgba(255,34,85,0.06)"
+                        : matchedByLeft      ? "rgba(255,214,0,0.06)"
                         : "var(--bg2)",
                       border: `2px ${isActivatable ? "dashed" : "solid"} ${isCorrect ? "var(--green)" : isWrong ? "var(--red)" : matchedByLeft ? "rgba(255,214,0,0.45)" : isActivatable ? "rgba(0,229,255,0.4)" : "var(--border)"}`,
                       borderRadius: 6,
@@ -372,6 +436,7 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
                       transition: "all 0.15s",
                       textAlign: "left",
                       opacity: !revealed && !isHost && !selectedLeft && !matchedByLeft ? 0.65 : 1,
+                      animation: isCorrect ? "matchPop 0.35s cubic-bezier(0.34,1.56,0.64,1)" : "none",
                     }}
                   >
                     {matchedByLeft && !revealed && <span style={{ fontSize: "0.6rem", flexShrink: 0, color: "var(--yellow)" }}>←</span>}
@@ -382,20 +447,6 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
               })}
             </div>
           </div>
-
-          {/* Fortschritt + Abschicken */}
-          {!revealed && !isHost && (
-            <button
-              className="btn btn-primary"
-              style={{ marginTop: "1rem" }}
-              onClick={() => handleSubmit(JSON.stringify(userMatches))}
-              disabled={Object.keys(userMatches).length < puzzle.pairs.length}
-            >
-              {Object.keys(userMatches).length < puzzle.pairs.length
-                ? `${Object.keys(userMatches).length} / ${puzzle.pairs.length} zugeordnet ...`
-                : "✓  Zuordnung bestätigen"}
-            </button>
-          )}
 
           {/* Host-Ansicht: korrekte Lösung */}
           {isHost && (
@@ -412,10 +463,115 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
               ))}
             </div>
           )}
+
+          {/* Timeout-Hinweis */}
+          {!revealed && !isHost && (
+            <p style={{ fontSize: "0.68rem", color: "var(--text-dim)", fontFamily: "Share Tech Mono, monospace", textAlign: "center", marginTop: "0.6rem", opacity: 0.7 }}>
+              Bei Zeitablauf: Teilpunkte für bereits zugeordnete Paare
+            </p>
+          )}
         </div>
       )}
 
-      {/* Build slogan */}
+      {/* ── Brainstorm ──────────────────────────────────────────────────────── */}
+      {puzzle.type === "brainstorm" && (
+        <div>
+          {puzzle.examples && (
+            <div style={{
+              background: "var(--bg2)",
+              border: "1px solid rgba(0,229,255,0.15)",
+              borderLeft: "3px solid var(--cyan)",
+              borderRadius: "0 6px 6px 0",
+              padding: "0.75rem 1rem", marginBottom: "1rem",
+            }}>
+              <p style={{ color: "var(--text-dim)", fontSize: "0.68rem", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.45rem", fontFamily: "Share Tech Mono, monospace" }}>
+                Beispiele:
+              </p>
+              {puzzle.examples.map((ex, i) => (
+                <p key={i} style={{ color: "var(--cyan)", fontSize: "0.8rem", fontFamily: "Share Tech Mono, monospace", lineHeight: 1.55, margin: "0.15rem 0" }}>
+                  › {ex}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {!isHost ? (
+            <>
+              <div style={{ marginBottom: "0.75rem" }}>
+                {brainstormItems.map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", gap: "0.4rem", marginBottom: "0.4rem", alignItems: "center" }}>
+                    <span style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "0.72rem", color: "var(--text-dim)", width: 20, flexShrink: 0, textAlign: "right" }}>
+                      {idx + 1}.
+                    </span>
+                    <input
+                      type="text"
+                      value={item}
+                      onChange={e => updateBrainstormItem(idx, e.target.value)}
+                      placeholder={puzzle.placeholder || "Dein Beispiel..."}
+                      disabled={revealed}
+                      style={{ flex: 1, fontSize: "0.95rem" }}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && idx === brainstormItems.length - 1 && item.trim()) {
+                          addBrainstormItem();
+                        }
+                      }}
+                    />
+                    {brainstormItems.length > 1 && !revealed && (
+                      <button
+                        onClick={() => removeBrainstormItem(idx)}
+                        style={{
+                          background: "transparent", border: "1px solid var(--border)",
+                          borderRadius: 4, color: "var(--text-dim)", cursor: "pointer",
+                          fontSize: "0.75rem", padding: "0.2rem 0.45rem", lineHeight: 1, flexShrink: 0,
+                        }}
+                      >✕</button>
+                    )}
+                  </div>
+                ))}
+
+                {!revealed && (
+                  <button
+                    onClick={addBrainstormItem}
+                    style={{
+                      background: "transparent",
+                      border: "1px dashed rgba(0,229,255,0.3)",
+                      borderRadius: 6, color: "var(--cyan)",
+                      cursor: "pointer", fontSize: "0.82rem",
+                      padding: "0.45rem 1rem", width: "100%",
+                      marginTop: "0.2rem", fontFamily: "Share Tech Mono, monospace",
+                      transition: "all 0.15s",
+                    }}
+                    onMouseOver={e => e.currentTarget.style.background = "rgba(0,229,255,0.05)"}
+                    onMouseOut={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    + Weiteres Beispiel hinzufügen
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+                <span style={{ fontSize: "0.72rem", fontFamily: "Share Tech Mono, monospace", color: canSubmitBrainstorm ? "var(--green)" : "var(--text-dim)" }}>
+                  {filledItems.length}/{minItems} Mindestanzahl {canSubmitBrainstorm ? "✓" : ""}
+                </span>
+              </div>
+
+              <button
+                className="btn btn-primary"
+                onClick={submitBrainstorm}
+                disabled={revealed || !canSubmitBrainstorm}
+              >
+                {canSubmitBrainstorm ? `✓ ${filledItems.length} Beispiele abschicken` : `Mindestens ${minItems} Beispiele nötig`}
+              </button>
+            </>
+          ) : (
+            <p style={{ color: "var(--text-dim)", fontSize: "0.82rem", fontFamily: "Share Tech Mono, monospace", textAlign: "center", padding: "1rem" }}>
+              Schüler sammeln Beispiele...
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── Build slogan ────────────────────────────────────────────────────── */}
       {puzzle.type === "build-slogan" && (
         <div>
           <div style={{
@@ -453,19 +609,20 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
         </div>
       )}
 
-      {/* Erklärung */}
+      {/* ── Erklärung (LERNMOMENT) ──────────────────────────────────────────── */}
       {revealed && puzzle.explanation && (
         <div style={{
-          marginTop: "1.1rem", padding: "0.85rem 1rem",
+          marginTop: "1.25rem", padding: "1rem 1.1rem",
           background: "rgba(0,229,255,0.05)",
-          border: "1px solid rgba(0,229,255,0.2)",
-          borderLeft: "3px solid var(--cyan)",
-          borderRadius: "0 6px 6px 0",
+          border: "1px solid rgba(0,229,255,0.25)",
+          borderLeft: "4px solid var(--cyan)",
+          borderRadius: "0 8px 8px 0",
+          boxShadow: "0 4px 20px rgba(0,229,255,0.06)",
         }}>
-          <p style={{ fontSize: "0.65rem", color: "var(--cyan)", marginBottom: "0.3rem", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "Share Tech Mono, monospace" }}>
-            Erklärung
+          <p style={{ fontSize: "0.6rem", color: "var(--cyan)", marginBottom: "0.4rem", letterSpacing: "0.15em", textTransform: "uppercase", fontFamily: "Share Tech Mono, monospace", fontWeight: 700 }}>
+            ◈ LERNMOMENT
           </p>
-          <p style={{ color: "var(--text)", fontSize: "0.88rem", lineHeight: 1.65 }}>{puzzle.explanation}</p>
+          <p style={{ color: "var(--text)", fontSize: "0.88rem", lineHeight: 1.7 }}>{puzzle.explanation}</p>
         </div>
       )}
     </div>
