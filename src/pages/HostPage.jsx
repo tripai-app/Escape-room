@@ -5,9 +5,10 @@ import { db } from "../firebase";
 import { PUZZLES } from "../data/puzzles";
 
 const TYPE_LABELS = {
-  "multiple-choice": { label: "Multiple Choice", color: "var(--cyan)" },
-  "sort":            { label: "Sortieren",        color: "var(--green)" },
-  "build-slogan":    { label: "Slogan schreiben", color: "var(--red)" },
+  "multiple-choice": { label: "Multiple Choice", color: "var(--cyan)"   },
+  "sort":            { label: "Sortieren",        color: "var(--green)"  },
+  "match":           { label: "Zuordnen",         color: "var(--yellow)" },
+  "build-slogan":    { label: "Slogan schreiben", color: "var(--red)"    },
 };
 
 function generateCode() {
@@ -137,7 +138,7 @@ export default function HostPage() {
           {[
             { label: "Rätsel", value: PUZZLES.length, color: "var(--cyan)" },
             { label: "Max. Punkte", value: totalPoints + "+", color: "var(--yellow)" },
-            { label: "Min. ca.", value: "47 min", color: "var(--green)" },
+            { label: "Min. ca.", value: "55 min", color: "var(--green)" },
           ].map(item => (
             <div key={item.label} style={{
               flex: 1, textAlign: "center",

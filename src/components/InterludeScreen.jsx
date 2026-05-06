@@ -53,31 +53,42 @@ export default function InterludeScreen({ puzzleIndex, players, myId, pointsEarn
 
         {/* Mein Ergebnis (nur für Spieler) */}
         {!isHost && (
-          <div className="score-pop" style={{
-            background: wasCorrect ? "rgba(0,255,136,0.07)" : "rgba(255,34,85,0.07)",
-            border: `1px solid ${wasCorrect ? "rgba(0,255,136,0.3)" : "rgba(255,34,85,0.3)"}`,
-            borderRadius: 8,
-            padding: "1rem",
-            textAlign: "center",
-            marginBottom: "1rem",
-          }}>
-            <div style={{ fontSize: "2.2rem", marginBottom: "0.25rem" }}>
-              {wasCorrect ? "✅" : "❌"}
-            </div>
-            <div style={{
-              fontFamily: "Orbitron, monospace",
-              fontSize: "2rem",
-              fontWeight: 700,
-              color: wasCorrect ? "var(--green)" : "var(--red)",
-              marginBottom: "0.15rem",
-              textShadow: wasCorrect ? "0 0 20px rgba(0,255,136,0.5)" : "0 0 20px rgba(255,34,85,0.5)",
+          puzzle?.type === "build-slogan" ? (
+            /* Slogan: Lehrer bewertet -- kein Auto-Urteil */
+            <div className="score-pop" style={{
+              background: "rgba(255,214,0,0.07)",
+              border: "1px solid rgba(255,214,0,0.3)",
+              borderRadius: 8, padding: "1rem", textAlign: "center", marginBottom: "1rem",
             }}>
-              +{pointsEarned}
+              <div style={{ fontSize: "2rem", marginBottom: "0.25rem" }}>✏️</div>
+              <div style={{ color: "var(--yellow)", fontWeight: 700, fontSize: "1rem", marginBottom: "0.15rem" }}>
+                Slogan abgegeben!
+              </div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>
+                Warte auf Bewertung durch den Lehrer...
+              </div>
             </div>
-            <div style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>
-              {wasCorrect ? "Richtig! Weiter so, Agent." : "Nicht ganz — beim nächsten besser!"}
+          ) : (
+            <div className="score-pop" style={{
+              background: wasCorrect ? "rgba(0,255,136,0.07)" : "rgba(255,34,85,0.07)",
+              border: `1px solid ${wasCorrect ? "rgba(0,255,136,0.3)" : "rgba(255,34,85,0.3)"}`,
+              borderRadius: 8, padding: "1rem", textAlign: "center", marginBottom: "1rem",
+            }}>
+              <div style={{ fontSize: "2.2rem", marginBottom: "0.25rem" }}>
+                {wasCorrect ? "✅" : "❌"}
+              </div>
+              <div style={{
+                fontFamily: "Orbitron, monospace", fontSize: "2rem", fontWeight: 700,
+                color: wasCorrect ? "var(--green)" : "var(--red)", marginBottom: "0.15rem",
+                textShadow: wasCorrect ? "0 0 20px rgba(0,255,136,0.5)" : "0 0 20px rgba(255,34,85,0.5)",
+              }}>
+                +{pointsEarned}
+              </div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>
+                {wasCorrect ? "Richtig! Weiter so, Agent." : "Nicht ganz — beim nächsten besser!"}
+              </div>
             </div>
-          </div>
+          )
         )}
 
         {/* Charakter-Kommentar */}

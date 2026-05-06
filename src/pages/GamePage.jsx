@@ -91,16 +91,36 @@ export default function GamePage() {
     if (!playerId || answeredThis) return;
     const puzzle = PUZZLES[room.currentPuzzle];
     let correct = false;
+    let earned  = 0;
 
     if (puzzle.type === "multiple-choice") {
       correct = answerId === puzzle.correct;
+      earned  = correct ? puzzle.points + timeBonus : Math.round(puzzle.points * 0.1);
+
     } else if (puzzle.type === "sort") {
       correct = answerId === puzzle.correctOrder.join(",");
+      earned  = correct ? puzzle.points + timeBonus : Math.round(puzzle.points * 0.1);
+
+    } else if (puzzle.type === "match") {
+      try {
+        const answers      = JSON.parse(answerId);
+        const correctCount = puzzle.pairs.filter(p => answers[p.leftId] === p.rightId).length;
+        correct = correctCount === puzzle.pairs.length;
+        // Teilpunkte bei Match-Rätseln
+        const ratio = correctCount / puzzle.pairs.length;
+        earned  = correct
+          ? puzzle.points + timeBonus
+          : Math.round(puzzle.points * ratio * 0.8);
+      } catch {
+        earned = 0;
+      }
+
     } else if (puzzle.type === "build-slogan") {
-      correct = true;
+      // Kein Auto-Score -- Lehrer vergibt Punkte manuell
+      correct = false;
+      earned  = 0;
     }
 
-    const earned = correct ? puzzle.points + timeBonus : Math.round(puzzle.points * 0.1);
     const newScore = score + earned;
 
     await update(ref(db, `rooms/${code}/players/${playerId}`), {
@@ -112,16 +132,18 @@ export default function GamePage() {
     setLastResult({ earned, correct });
     setAnsweredThis(true);
 
-    // Sound + Flash
-    if (correct) {
-      playCorrect();
-      setFlash("correct");
-      if (room.currentPuzzle === PUZZLES.length - 1) setConfetti(true);
-    } else {
-      playWrong();
-      setFlash("wrong");
+    // Sound + Flash — nicht für Slogan (kein Auto-Urteil)
+    if (puzzle.type !== "build-slogan") {
+      if (correct) {
+        playCorrect();
+        setFlash("correct");
+        if (room.currentPuzzle === PUZZLES.length - 1) setConfetti(true);
+      } else {
+        playWrong();
+        setFlash("wrong");
+      }
+      setTimeout(() => setFlash(null), 700);
     }
-    setTimeout(() => setFlash(null), 700);
   }
 
   async function handleNextPuzzle() {
@@ -155,9 +177,12 @@ export default function GamePage() {
   async function grantCustomPoints(pid, points) {
     const player = players[pid];
     if (!player) return;
-    const newScore = (player.score || 0) + parseInt(points);
+    const pts = parseInt(points);
+    if (isNaN(pts) || pts < 0) return;
+    // Slogan-Rätsel: Basispunkte waren 0, Teacher-Punkte direkt addieren
+    const newScore = (player.score || 0) + pts;
     await update(ref(db, `rooms/${code}/players/${pid}`), { score: newScore });
-    setFreeTextGrades(prev => ({ ...prev, [pid]: true }));
+    setFreeTextGrades(prev => ({ ...prev, [pid]: { awarded: pts } }));
   }
 
   const puzzle = room ? PUZZLES[room.currentPuzzle] : null;
@@ -402,7 +427,9 @@ export default function GamePage() {
                             </button>
                           </>
                         ) : (
-                          <span style={{ color: "var(--green)", fontSize: "0.78rem" }}>✓ Bewertet</span>
+                          <span style={{ color: "var(--green)", fontSize: "0.78rem" }}>
+                            ✓ +{freeTextGrades[p.id]?.awarded ?? "?"} Pkt.
+                          </span>
                         )}
                       </div>
                     ))}

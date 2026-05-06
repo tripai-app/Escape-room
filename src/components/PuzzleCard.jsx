@@ -1,13 +1,20 @@
 import { useState, useEffect, useRef } from "react";
+import { PUZZLES } from "../data/puzzles";
 
 export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
-  const [selected, setSelected]   = useState(null);
-  const [revealed, setRevealed]   = useState(false);
-  const [timeLeft, setTimeLeft]   = useState(puzzle.timeLimit);
-  const [sortOrder, setSortOrder] = useState(puzzle.items ? [...puzzle.items] : []);
-  const [freeText, setFreeText]   = useState("");
-  const [dragIdx, setDragIdx]     = useState(null);
-  const [touchOver, setTouchOver] = useState(null);
+  const [selected, setSelected]         = useState(null);
+  const [revealed, setRevealed]         = useState(false);
+  const [timeLeft, setTimeLeft]         = useState(puzzle.timeLimit);
+  const [sortOrder, setSortOrder]       = useState(puzzle.items ? [...puzzle.items] : []);
+  const [freeText, setFreeText]         = useState("");
+  const [dragIdx, setDragIdx]           = useState(null);
+  const [touchOver, setTouchOver]       = useState(null);
+  // ── Match-Puzzle-State ─────────────────────────────────────────────────────
+  const [selectedLeft,  setSelectedLeft]  = useState(null);
+  const [userMatches,   setUserMatches]   = useState({});
+  const [shuffledRight, setShuffledRight] = useState(
+    () => puzzle.pairs ? [...puzzle.pairs].sort(() => Math.random() - 0.5) : []
+  );
   const touchStart = useRef(null);
 
   useEffect(() => {
@@ -15,11 +22,21 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
     setTimeLeft(puzzle.timeLimit);
     setSortOrder(puzzle.items ? [...puzzle.items] : []);
     setFreeText("");
+    setSelectedLeft(null);
+    setUserMatches({});
+    setShuffledRight(puzzle.pairs ? [...puzzle.pairs].sort(() => Math.random() - 0.5) : []);
   }, [puzzle.id]);
 
   useEffect(() => {
     if (revealed || isHost) return;
-    if (timeLeft <= 0) { handleSubmit(selected || "timeout", 0); return; }
+    if (timeLeft <= 0) {
+      if (puzzle.type === "match") {
+        handleSubmit(JSON.stringify(userMatches), 0);
+      } else {
+        handleSubmit(selected || "timeout", 0);
+      }
+      return;
+    }
     const t = setInterval(() => setTimeLeft(s => s - 1), 1000);
     return () => clearInterval(t);
   }, [timeLeft, revealed]);
@@ -35,6 +52,24 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
     if (revealed || isHost) return;
     setSelected(id);
     handleSubmit(id, Math.round((timeLeft / puzzle.timeLimit) * 50));
+  }
+
+  // ── Match-Puzzle-Interaktion ───────────────────────────────────────────────
+  function handleMatchLeft(leftId) {
+    if (revealed || isHost) return;
+    setSelectedLeft(prev => prev === leftId ? null : leftId);
+  }
+
+  function handleMatchRight(rightId) {
+    if (revealed || isHost || !selectedLeft) return;
+    setUserMatches(prev => {
+      const next = { ...prev };
+      // Altes Mapping für diesen rechten Slot entfernen
+      Object.keys(next).forEach(k => { if (next[k] === rightId) delete next[k]; });
+      next[selectedLeft] = rightId;
+      return next;
+    });
+    setSelectedLeft(null);
   }
 
   function moveItem(from, to) {
@@ -107,7 +142,7 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.85rem", gap: "0.5rem" }}>
         <div>
           <span className="badge badge-red" style={{ marginBottom: "0.2rem", display: "inline-block" }}>
-            RAUM {puzzle.id + 1}/5
+            RAUM {puzzle.id + 1}/{PUZZLES.length}
           </span>
           <div style={{ color: "var(--text-dim)", fontSize: "0.72rem", fontFamily: "Share Tech Mono, monospace" }}>
             {puzzle.roomSubtitle}
@@ -242,6 +277,140 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost }) {
               onClick={() => handleSubmit(sortOrder.map(i => i.id).join(","))}>
               ✓ Reihenfolge bestätigen
             </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Match-Puzzle (Zuordnen) ──────────────────────────────────────────── */}
+      {puzzle.type === "match" && (
+        <div>
+          <p style={{
+            color: selectedLeft ? "var(--cyan)" : "var(--text-dim)",
+            fontSize: "0.78rem", marginBottom: "0.75rem",
+            fontFamily: "Share Tech Mono, monospace",
+            transition: "color 0.2s",
+          }}>
+            {isHost
+              ? "Richtige Zuordnung:"
+              : selectedLeft
+                ? "→ Jetzt rechts das passende Beispiel anklicken:"
+                : "① Links eine Kategorie wählen  ②  Rechts das Beispiel zuordnen"}
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 0.7rem" }}>
+
+            {/* Linke Spalte */}
+            <div>
+              <div style={{ fontSize: "0.58rem", color: "var(--text-dim)", fontFamily: "Share Tech Mono, monospace", letterSpacing: "0.1em", textAlign: "center", marginBottom: "0.4rem" }}>
+                KATEGORIE
+              </div>
+              {puzzle.pairs.map(pair => {
+                const matched    = userMatches[pair.leftId];
+                const isSelected = selectedLeft === pair.leftId;
+                const isCorrect  = revealed && matched === pair.rightId;
+                const isWrong    = revealed && matched && matched !== pair.rightId;
+                const isUnmatched = revealed && !matched;
+                return (
+                  <button key={pair.leftId}
+                    onClick={() => handleMatchLeft(pair.leftId)}
+                    disabled={revealed || isHost}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "0.4rem",
+                      width: "100%", padding: "0.65rem 0.7rem", marginBottom: "0.4rem",
+                      background: isCorrect  ? "rgba(0,255,136,0.1)"
+                        : isWrong            ? "rgba(255,34,85,0.08)"
+                        : isSelected         ? "rgba(0,229,255,0.15)"
+                        : matched            ? "rgba(255,214,0,0.08)"
+                        : "var(--bg2)",
+                      border: `2px solid ${isCorrect ? "var(--green)" : isWrong ? "var(--red)" : isSelected ? "var(--cyan)" : matched ? "rgba(255,214,0,0.5)" : "var(--border)"}`,
+                      borderRadius: 6,
+                      color: isCorrect ? "var(--green)" : isWrong ? "var(--red)" : isSelected ? "var(--cyan)" : matched ? "var(--yellow)" : isUnmatched ? "rgba(221,225,255,0.4)" : "var(--text)",
+                      fontSize: "0.82rem", fontWeight: 700,
+                      cursor: revealed || isHost ? "default" : "pointer",
+                      transition: "all 0.15s",
+                      transform: isSelected ? "scale(1.02)" : "none",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span style={{ fontSize: "0.62rem", flexShrink: 0, opacity: isSelected ? 1 : 0 }}>▶</span>
+                    {!isSelected && matched && !revealed && <span style={{ fontSize: "0.62rem", color: "var(--yellow)", flexShrink: 0 }}>✓</span>}
+                    <span style={{ flex: 1 }}>{pair.leftText}</span>
+                    {revealed && (isCorrect ? <span style={{ flexShrink: 0 }}>✓</span> : isWrong ? <span style={{ flexShrink: 0 }}>✗</span> : null)}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Rechte Spalte */}
+            <div>
+              <div style={{ fontSize: "0.58rem", color: "var(--text-dim)", fontFamily: "Share Tech Mono, monospace", letterSpacing: "0.1em", textAlign: "center", marginBottom: "0.4rem" }}>
+                BEISPIEL
+              </div>
+              {shuffledRight.map(pair => {
+                const matchedByLeft   = Object.entries(userMatches).find(([, r]) => r === pair.rightId)?.[0];
+                const origPair        = puzzle.pairs.find(p => p.rightId === pair.rightId);
+                const isCorrect       = revealed && matchedByLeft === origPair?.leftId;
+                const isWrong         = revealed && matchedByLeft && !isCorrect;
+                const isUnmatched     = revealed && !matchedByLeft;
+                const isActivatable   = !revealed && !isHost && selectedLeft !== null;
+                return (
+                  <button key={pair.rightId}
+                    onClick={() => handleMatchRight(pair.rightId)}
+                    disabled={revealed || isHost || !selectedLeft}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "0.4rem",
+                      width: "100%", padding: "0.6rem 0.7rem", marginBottom: "0.4rem",
+                      background: isCorrect    ? "rgba(0,255,136,0.08)"
+                        : isWrong              ? "rgba(255,34,85,0.06)"
+                        : matchedByLeft        ? "rgba(255,214,0,0.06)"
+                        : "var(--bg2)",
+                      border: `2px ${isActivatable ? "dashed" : "solid"} ${isCorrect ? "var(--green)" : isWrong ? "var(--red)" : matchedByLeft ? "rgba(255,214,0,0.45)" : isActivatable ? "rgba(0,229,255,0.4)" : "var(--border)"}`,
+                      borderRadius: 6,
+                      color: isCorrect ? "var(--green)" : isWrong ? "var(--red)" : matchedByLeft ? "var(--yellow)" : isUnmatched ? "rgba(221,225,255,0.4)" : "var(--text)",
+                      fontSize: "0.76rem", fontWeight: matchedByLeft ? 700 : 500,
+                      cursor: revealed || isHost ? "default" : (selectedLeft ? "pointer" : "not-allowed"),
+                      transition: "all 0.15s",
+                      textAlign: "left",
+                      opacity: !revealed && !isHost && !selectedLeft && !matchedByLeft ? 0.65 : 1,
+                    }}
+                  >
+                    {matchedByLeft && !revealed && <span style={{ fontSize: "0.6rem", flexShrink: 0, color: "var(--yellow)" }}>←</span>}
+                    <span style={{ flex: 1 }}>{pair.rightText}</span>
+                    {revealed && (isCorrect ? <span style={{ flexShrink: 0 }}>✓</span> : isWrong ? <span style={{ flexShrink: 0 }}>✗</span> : null)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Fortschritt + Abschicken */}
+          {!revealed && !isHost && (
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: "1rem" }}
+              onClick={() => handleSubmit(JSON.stringify(userMatches))}
+              disabled={Object.keys(userMatches).length < puzzle.pairs.length}
+            >
+              {Object.keys(userMatches).length < puzzle.pairs.length
+                ? `${Object.keys(userMatches).length} / ${puzzle.pairs.length} zugeordnet ...`
+                : "✓  Zuordnung bestätigen"}
+            </button>
+          )}
+
+          {/* Host-Ansicht: korrekte Lösung */}
+          {isHost && (
+            <div style={{ marginTop: "0.65rem", display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+              {puzzle.pairs.map(pair => (
+                <div key={pair.leftId} style={{
+                  display: "flex", alignItems: "center", gap: "0.6rem",
+                  fontSize: "0.8rem", color: "var(--text-dim)",
+                }}>
+                  <span style={{ color: "var(--cyan)", fontWeight: 700, minWidth: 100 }}>{pair.leftText}</span>
+                  <span>→</span>
+                  <span style={{ color: "var(--text)" }}>{pair.rightText}</span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

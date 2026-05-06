@@ -92,10 +92,10 @@ export const STORY_SCENES = [
     character: "void",
     lines: [
       "Ignoriert sie. Genau das ist ihre Methode -- sie redet, sie provoziert, sie macht euch unsicher.",
-      "Fünf Sicherheitsstufen. Fünf Räume tief im Herzen von NOVAs digitalem Netzwerk.",
+      "Sechs Sicherheitsstufen. Sechs Räume tief im Herzen von NOVAs digitalem Netzwerk.",
       "Dr. Void hat die Karte. SIGNAL hat den geheimen Zugang. Aber die Rätsel -- die muss jeder selbst lösen.",
       "Denn H.E.R.A.L.D. hat das System mit nur einer Schwachstelle gebaut: Wer Sprache wirklich versteht, lässt sich von ihr nicht mehr manipulieren.",
-      "Löst alle fünf Rätsel -- und ich kann den Kerncode von innen heraus abschalten.",
+      "Löst alle sechs Rätsel -- und ich kann den Kerncode von innen heraus abschalten.",
       "Schafft ihr es nicht rechtzeitig, geht H.E.R.A.L.D. um Mitternacht in den Dauerbetrieb. Dann ist es zu spät. Ich zähle auf euch.",
     ],
   },
@@ -133,7 +133,12 @@ export const INTERLUDE_MESSAGES = [
   },
   {
     character: "signal",
-    correct: "Das war stark. Wirklich stark. Dr. Void -- du kannst jetzt den Schalter umlegen.",
-    wrong: "Letzte Chance. Alles oder nichts. Ich glaube an euch -- und das sage ich nicht oft.",
+    correct: "Das war stark. Dr. Void -- du kannst jetzt den Schalter umlegen. Letzter Raum. Alles oder nichts.",
+    wrong: "Fast da. Was auch immer passiert ist -- ihr habt es bis hierher geschafft. Letzter Raum. Jetzt alles geben.",
+  },
+  {
+    character: "void",
+    correct: "Slogan eingereicht. Der Lehrer bewertet gerade. Wartet kurz -- das war Raum 6, der letzte. Ich starte den Abschalt-Befehl.",
+    wrong: "Slogan eingereicht. Der Lehrer bewertet gerade -- kein Richtig oder Falsch hier, nur Mut und Klarheit. Das war der letzte Raum.",
   },
 ];
