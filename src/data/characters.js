@@ -74,7 +74,7 @@ export const STORY_SCENES = [
       "Das Einzige, was zählt: Ich habe drei Monate gebraucht, um eine Lücke in H.E.R.A.L.D.s Firewall zu finden.",
       "Die Tür ist jetzt offen. Aber sie schließt sich wieder -- genau um Mitternacht.",
       "H.E.R.A.L.D. weiß bereits, dass jemand im System ist. Sie testet euch gerade.",
-      "Fragt mich nicht, wer ich bin. Fragt mich, was ich weiß. Und ich weiß: Ihr habt 47 Minuten.",
+      "Fragt mich nicht, wer ich bin. Fragt mich, was ich weiß. Und ich weiß: Ihr habt 45 Minuten.",
     ],
   },
   {
@@ -104,7 +104,7 @@ export const STORY_SCENES = [
     lines: [
       "Alles gesagt.",
       "Die Uhr läuft.",
-      "Ihr habt 47 Minuten. Viel Glück.",
+      "Ihr habt 45 Minuten. Viel Glück.",
     ],
   },
 ];
