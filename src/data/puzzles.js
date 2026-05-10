@@ -1,4 +1,4 @@
-// Rätsel-Daten — alle 7 Räume
+// Rätsel-Daten — alle 6 Räume
 // Typen: "multiple-choice" | "sort" | "match" | "build-slogan" | "brainstorm"
 // match: pairs: [{ leftId, leftText, rightId, rightText }]
 // brainstorm: minItems, placeholder, examples[]
@@ -170,41 +170,6 @@ export const PUZZLES = [
     explanation: "Stilmittel machen Werbung einprägsamer: Alliteration klingt gut, Wiederholung setzt sich fest, Metaphern erzeugen Bilder, Personifikation schafft emotionale Nähe, Ironie überrascht und provoziert.",
   },
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RAUM 7 — Der Gegenschlag   (Build-Slogan, Lehrer bewertet)
-  // ─────────────────────────────────────────────────────────────────────────
-  {
-    id: 6,
-    room: "Der Gegenschlag",
-    roomSubtitle: "NOVA Corp -- HERALD Kern-Terminal",
-    type: "build-slogan",
-    timeLimit: 150,
-    points: 300,
-
-    briefing: [
-      {
-        character: "void",
-        text: "HERALDs Abschalt-Code reagiert nur auf Sprache -- auf einen Satz, der seine eigene Logik gegen ihn wendet. Ihr müsst jetzt selbst eine Botschaft schreiben. Eine, die aufklärt statt zu manipulieren.",
-      },
-      {
-        character: "signal",
-        text: "Produkt: MemWash 3000. NOVAs neue App, die angeblich schlechte Erinnerungen löscht. In Wirklichkeit sammelt sie Daten. Schreibt einen Slogan, der warnt -- und benutzt mindestens ein Stilmittel.",
-      },
-      {
-        character: "herald",
-        text: "[ ALARM -- PHASE OMEGA KRITISCH ] Niemand schreibt bessere Werbung als ich. NIEMAND. Versucht es. Ich lache bereits. Das hier ist --[ WARNUNG: SYSTEMINSTABILITÄT ERKANNT ]--",
-      },
-    ],
-
-    question: "NOVA Corp bewirbt **MemWash 3000** -- eine App, die angeblich schlechte Erinnerungen löscht. Schreibe einen **Aufklärungs-Slogan**, der Menschen warnt. Nutze mindestens ein Stilmittel. Der Lehrer bewertet live.",
-    examples: [
-      "Metapher: 'MemWash 3000 -- das Messer, das dein Denken schneidet.'",
-      "Alliteration: 'Klick. Kauf. Kontrolliert. -- Stopp.'",
-      "Wiederholung: 'Deine Daten. Deine Daten. Ihre Millionen.'",
-      "Ironie: 'Vergiss deine Erinnerungen -- NOVA merkt sie sich für dich.'",
-    ],
-    explanation: "Die stärkste Antwort auf Manipulation ist kritisches Denken -- ausgedrückt in klarer, wirkungsvoller Sprache. Ihr habt HERALDs System von innen kennengelernt. Jetzt könnt ihr es erkennen und benennen.",
-  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -219,7 +184,7 @@ export const STORY = {
     "Heute Nacht, 23:59 Uhr, geht HERALD online. Für immer.",
     "Eine anonyme Nachricht erscheint auf euren Handys:",
     "'Ihr seid die Einzigen, die es noch stoppen können. Infiltriert das Netzwerk. Versteht ihre Sprache. Brecht den Code.'",
-    "Ihr habt 7 Rätsel. Ihr habt einander. Und ihr habt -- fast -- keine Zeit mehr.",
+    "Ihr habt 6 Rätsel. Ihr habt einander. Und ihr habt -- fast -- keine Zeit mehr.",
     "Viel Erfolg. Die Welt schaut zu.",
   ],
 };

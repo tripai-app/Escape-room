@@ -92,10 +92,10 @@ export const STORY_SCENES = [
     character: "void",
     lines: [
       "Ignoriert sie. Genau das ist ihre Methode -- sie redet, sie provoziert, sie macht euch unsicher.",
-      "Sieben Sicherheitsstufen. Sieben Räume tief im Herzen von NOVAs digitalem Netzwerk.",
+      "Sechs Sicherheitsstufen. Sechs Räume tief im Herzen von NOVAs digitalem Netzwerk.",
       "Dr. Void hat die Karte. SIGNAL hat den geheimen Zugang. Aber die Rätsel -- die muss jeder selbst lösen.",
       "Denn H.E.R.A.L.D. hat das System mit nur einer Schwachstelle gebaut: Wer Sprache wirklich versteht, lässt sich von ihr nicht mehr manipulieren.",
-      "Löst alle sieben Rätsel -- und ich kann den Kerncode von innen heraus abschalten.",
+      "Löst alle sechs Rätsel -- und ich kann den Kerncode von innen heraus abschalten.",
       "Schafft ihr es nicht rechtzeitig, geht H.E.R.A.L.D. um Mitternacht in den Dauerbetrieb. Dann ist es zu spät. Ich zähle auf euch.",
     ],
   },
@@ -110,7 +110,7 @@ export const STORY_SCENES = [
 ];
 
 // ── Nachrichten zwischen den Rätseln ────────────────────────────────────────
-// Index 0 = nach Rätsel 1 · Index 6 = nach Rätsel 7 (build-slogan)
+// Index 0 = nach Rätsel 1 · Index 5 = nach Rätsel 6 (letzter Raum)
 export const INTERLUDE_MESSAGES = [
   // 0 — nach Raum 1: MC Farbpsychologie
   {
@@ -142,16 +142,10 @@ export const INTERLUDE_MESSAGES = [
     correct: "AIDA geknackt. A-I-D-A -- das ist H.E.R.A.L.D.s Kern-Algorithmus, seit 1898 unverändert. Noch zwei Räume. Ihr seid fast drin.",
     wrong: "AIDA -- Aufmerksamkeit, Interesse, Verlangen, Aktion. Merkt euch das. H.E.R.A.L.D. läuft genau nach diesem Schema. Noch zwei Räume -- nächstes Mal sitzt es.",
   },
-  // 5 — nach Raum 6: Match Stilmittel
+  // 5 — nach Raum 6: Match Stilmittel (letzter Raum)
   {
     character: "void",
-    correct: "Rhetorik-Kammer überwunden! Alliteration, Metapher, Wiederholung -- ihr erkennt jetzt die Werkzeuge. Letzter Raum. Das ist euer Gegenschlag. Ich zähle auf euch.",
-    wrong: "Fast da. Was auch immer passiert ist -- ihr habt es bis hierher geschafft. Letzter Raum. Jetzt alles geben.",
-  },
-  // 6 — nach Raum 7: Build-Slogan (Gegenschlag)
-  {
-    character: "void",
-    correct: "Slogan eingereicht. Der Lehrer bewertet gerade. Wartet kurz -- das war Raum 7, der letzte. Ich starte den Abschalt-Befehl.",
-    wrong: "Slogan eingereicht. Der Lehrer bewertet gerade -- kein Richtig oder Falsch hier, nur Mut und Klarheit. Das war der letzte Raum.",
+    correct: "Rhetorik-Kammer überwunden. Alle sechs Räume -- geschafft. Ich starte jetzt den Abschalt-Befehl. H.E.R.A.L.D. geht offline. Ihr habt es tatsächlich geschafft.",
+    wrong: "Sechs Räume -- geschafft. Kein perfektes Ergebnis, aber genug. Ich starte den Abschalt-Befehl. H.E.R.A.L.D. geht offline. Danke.",
   },
 ];
