@@ -48,6 +48,8 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost, puzzleStartedAt }
     if (timeLeft <= 0) {
       if (puzzle.type === "match") {
         handleSubmit(JSON.stringify(userMatches), 0);
+      } else if (puzzle.type === "brainstorm") {
+        handleSubmit(filledItems.length > 0 ? filledItems.join("\n") : "timeout", 0);
       } else {
         handleSubmit(selected || "timeout", 0);
       }

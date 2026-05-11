@@ -53,16 +53,18 @@ export default function InterludeScreen({ puzzleIndex, players, myId, pointsEarn
 
         {/* Mein Ergebnis (nur für Spieler) */}
         {!isHost && (
-          puzzle?.type === "build-slogan" ? (
-            /* Slogan: Lehrer bewertet -- kein Auto-Urteil */
+          (puzzle?.type === "build-slogan" || puzzle?.type === "brainstorm") ? (
+            /* Freitext: Lehrer bewertet -- kein Auto-Urteil */
             <div className="score-pop" style={{
               background: "rgba(255,214,0,0.07)",
               border: "1px solid rgba(255,214,0,0.3)",
               borderRadius: 8, padding: "1rem", textAlign: "center", marginBottom: "1rem",
             }}>
-              <div style={{ fontSize: "2rem", marginBottom: "0.25rem" }}>✏️</div>
+              <div style={{ fontSize: "2rem", marginBottom: "0.25rem" }}>
+                {puzzle?.type === "brainstorm" ? "🧠" : "✏️"}
+              </div>
               <div style={{ color: "var(--yellow)", fontWeight: 700, fontSize: "1rem", marginBottom: "0.15rem" }}>
-                Slogan abgegeben!
+                {puzzle?.type === "brainstorm" ? "Liste abgegeben!" : "Slogan abgegeben!"}
               </div>
               <div style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>
                 Warte auf Bewertung durch den Lehrer...

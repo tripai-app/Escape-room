@@ -168,7 +168,10 @@ export default function GamePage() {
         earned = 0;
       }
 
-    } else if (puzzle.type === "build-slogan" || puzzle.type === "brainstorm") {
+    } else if (puzzle.type === "brainstorm") {
+      correct = true;   // Abgabe zählt als richtig; Punkte kommen vom Lehrer
+      earned  = 0;
+    } else if (puzzle.type === "build-slogan") {
       correct = false;
       earned  = 0;
     }
@@ -184,14 +187,15 @@ export default function GamePage() {
       earned      += streakBonus;
     }
 
-    // ── Schnellster-Finger Bonus ──────────────────────────────────────────────
+    // ── Schnellster-Finger Bonus (nicht für Brainstorm) ───────────────────────
     let firstBlood = false;
-    if (correct && !room.firstCorrect?.[pIdx]) {
+    if (correct && puzzle.type !== "brainstorm" && !room.firstCorrect?.[pIdx]) {
       firstBlood  = true;
       earned     += 25;
     }
 
-    const newScore = score + earned;
+    const currentScore = players[playerId]?.score || 0;
+    const newScore = currentScore + earned;
     const updates  = {
       score: newScore,
       streak: newStreak,
@@ -268,7 +272,13 @@ export default function GamePage() {
     const pts = parseInt(points);
     if (isNaN(pts) || pts < 0) return;
     const newScore = (player.score || 0) + pts;
-    await update(ref(db, `rooms/${code}/players/${pid}`), { score: newScore });
+    const pIdx = room.currentPuzzle;
+    const prevEarned = player.answeredPuzzles?.[pIdx]?.earned || 0;
+    await update(ref(db, `rooms/${code}/players/${pid}`), {
+      score: newScore,
+      [`answeredPuzzles/${pIdx}/earned`]: prevEarned + pts,
+      [`answeredPuzzles/${pIdx}/correct`]: true,
+    });
     setFreeTextGrades(prev => ({ ...prev, [pid]: { awarded: pts } }));
   }
 
