@@ -89,6 +89,7 @@ export default function JoinPage() {
     const trimCode = code.trim().toUpperCase();
     const trimName = name.trim();
     if (!trimCode || !trimName) return setError("Bitte Code und Name eingeben.");
+    if (trimCode.length !== 4) return setError("Raum-Code muss genau 4 Zeichen haben.");
     if (trimName.length < 2) return setError("Name muss mind. 2 Zeichen haben.");
 
     setLoading(true);

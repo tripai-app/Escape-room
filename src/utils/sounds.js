@@ -1,6 +1,6 @@
 // Web Audio API — keine externe Bibliothek nötig
 let ctx = null;
-let bgNode = null;
+let bgNodes = [];
 let bgGain = null;
 let muted = false;
 
@@ -97,14 +97,14 @@ export function startAmbient() {
       osc.frequency.setValueAtTime(f, c.currentTime);
       osc.connect(bgGain);
       osc.start();
-      bgNode = osc;
+      bgNodes.push(osc);
     });
   } catch (e) {}
 }
 
 export function stopAmbient() {
-  try { bgNode?.stop(); } catch (e) {}
-  bgNode = null;
+  bgNodes.forEach(n => { try { n.stop(); } catch (e) {} });
+  bgNodes = [];
   bgGain = null;
 }
 
