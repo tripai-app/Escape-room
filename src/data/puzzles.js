@@ -50,15 +50,8 @@ export const PUZZLES = [
       text: "HERALD ist überall. Buchstäblich. Um sein Netzwerk zu kartieren, brauche ich, dass ihr aufzählt wo ihr ihn schon begegnet seid. Je mehr Orte ihr nennt, desto mehr hilft ihr mir. Mindestens drei.",
     },
 
-    question: "Wo begegnet dir **Werbung** im Alltag? Nenne mindestens 3 Beispiele -- je mehr und ungewöhnlicher, desto besser.",
-    placeholder: "Z.B. Im Fernsehen, auf Bananenschalen, ...",
-    examples: [
-      "Auf Fahrzeugen (Busse, LKWs, Taxis)",
-      "In Apps und Spielen (Banner, Sponsoren)",
-      "Auf Kleidung (Logos, Aufdrucke)",
-      "In Podcasts und YouTube-Videos",
-      "Auf Sportlern, Trikots, Stadien",
-    ],
+    question: "Wo begegnet dir **Werbung** im Alltag? Nenne mindestens 3 Orte oder Situationen -- je mehr und ungewöhnlicher, desto besser.",
+    placeholder: "Dein Beispiel...",
     explanation: "Werbung begegnet uns über 5.000 Mal pro Tag -- auf Bananenschalen, Schulbüchern, Ladenböden (Bodenkleber!), Eierkartons, sogar auf Eintrittskarten und Parktickets. HERALD nutzt jeden freien Blick.",
   },
 
