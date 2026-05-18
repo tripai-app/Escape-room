@@ -68,14 +68,15 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost, puzzleStartedAt }
   function handleSubmit(answerId, bonus) {
     if (revealed) return;
     setRevealed(true);
-    const timeBonus = bonus !== undefined ? bonus : Math.round((timeLeft / puzzle.timeLimit) * 100);
+    const clampedTime = Math.min(timeLeft, puzzle.timeLimit);
+    const timeBonus = bonus !== undefined ? bonus : Math.round((clampedTime / puzzle.timeLimit) * 30);
     onAnswer(answerId, timeBonus);
   }
 
   function pickOption(id) {
     if (revealed || isHost) return;
     setSelected(id);
-    handleSubmit(id, Math.round((timeLeft / puzzle.timeLimit) * 100));
+    handleSubmit(id, Math.round((Math.min(timeLeft, puzzle.timeLimit) / puzzle.timeLimit) * 30));
   }
 
   // ── Match-Puzzle-Interaktion ───────────────────────────────────────────────
@@ -103,7 +104,7 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost, puzzleStartedAt }
           allMatchedRef.current = true;
           playAllAnswered();
           setTimeout(() => {
-            handleSubmit(JSON.stringify(current), Math.round((timeLeft / puzzle.timeLimit) * 100));
+            handleSubmit(JSON.stringify(current), Math.round((Math.min(timeLeft, puzzle.timeLimit) / puzzle.timeLimit) * 30));
           }, 600);
         }
         return current;
@@ -155,7 +156,7 @@ export default function PuzzleCard({ puzzle, onAnswer, isHost, puzzleStartedAt }
     setBrainstormItems(prev => prev.filter((_, i) => i !== idx));
   }
   function submitBrainstorm() {
-    handleSubmit(filledItems.join("\n"), Math.round((timeLeft / puzzle.timeLimit) * 100));
+    handleSubmit(filledItems.join("\n"), 0);
   }
 
   const timerPct   = (timeLeft / puzzle.timeLimit) * 100;

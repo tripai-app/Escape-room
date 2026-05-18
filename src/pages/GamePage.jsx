@@ -149,11 +149,11 @@ export default function GamePage() {
 
     if (puzzle.type === "multiple-choice") {
       correct = answerId === puzzle.correct;
-      earned  = correct ? puzzle.points + timeBonus : Math.round(puzzle.points * 0.1);
+      earned  = correct ? puzzle.points + timeBonus : 0;
 
     } else if (puzzle.type === "sort") {
       correct = answerId === puzzle.correctOrder.join(",");
-      earned  = correct ? puzzle.points + timeBonus : Math.round(puzzle.points * 0.1);
+      earned  = correct ? puzzle.points + timeBonus : 0;
 
     } else if (puzzle.type === "match") {
       try {
@@ -161,9 +161,7 @@ export default function GamePage() {
         const correctCount = puzzle.pairs.filter(p => answers[p.leftId] === p.rightId).length;
         correct = correctCount === puzzle.pairs.length;
         const ratio = correctCount / puzzle.pairs.length;
-        earned  = correct
-          ? puzzle.points + timeBonus
-          : Math.round(puzzle.points * ratio * 0.8);
+        earned  = Math.round(puzzle.points * ratio * 0.8) + (correct ? timeBonus : 0);
       } catch {
         earned = 0;
       }

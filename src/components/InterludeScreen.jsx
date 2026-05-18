@@ -254,8 +254,8 @@ export default function InterludeScreen({ puzzleIndex, players, myId, pointsEarn
           </div>
         )}
 
-        {/* Volle Rangliste */}
-        {sorted.length > 3 && (
+        {/* Volle Rangliste — immer alle Spieler */}
+        {sorted.length > 0 && (
           <div style={{
             background: "var(--card)",
             border: "1px solid var(--border)",
@@ -269,9 +269,9 @@ export default function InterludeScreen({ puzzleIndex, players, myId, pointsEarn
               background: "linear-gradient(90deg, transparent, var(--yellow), transparent)",
             }} />
             <p style={{ fontSize: "0.7rem", color: "var(--text-dim)", fontFamily: "Share Tech Mono, monospace", letterSpacing: "0.12em", marginBottom: "0.65rem" }}>
-              ALLE AGENTEN
+              RANGLISTE
             </p>
-            {sorted.slice(3).map((p, i) => (
+            {sorted.map((p, i) => (
               <div key={p.id || p.name} style={{
                 display: "flex", alignItems: "center", gap: "0.6rem",
                 padding: "0.45rem 0.65rem",
@@ -281,8 +281,8 @@ export default function InterludeScreen({ puzzleIndex, players, myId, pointsEarn
                 marginBottom: "0.3rem",
                 animation: `fadeUp 0.3s ease ${i * 0.07}s both`,
               }}>
-                <span style={{ color: "var(--text-dim)", fontFamily: "Share Tech Mono, monospace", fontSize: "0.72rem", width: 22, flexShrink: 0 }}>
-                  {i + 4}.
+                <span style={{ fontFamily: "Share Tech Mono, monospace", fontSize: i < 3 ? "1rem" : "0.72rem", width: 22, flexShrink: 0, color: i === 0 ? "var(--yellow)" : i === 1 ? "#ccc" : i === 2 ? "#cd7f32" : "var(--text-dim)" }}>
+                  {i < 3 ? MEDALS[i] : `${i + 1}.`}
                 </span>
                 <div style={{
                   width: 28, height: 28, borderRadius: "50%",
